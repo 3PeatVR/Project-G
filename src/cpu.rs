@@ -1,3 +1,6 @@
+use crate::opcode;
+use std::collections::HashMap;
+
 pub struct Cpu {
     pub register_a: u8,
     pub register_x: u8,
@@ -8,7 +11,7 @@ pub struct Cpu {
 }
 
 #[derive(Debug)]
-pub enum AdressingMode {
+pub enum AddressingMode {
     Immediate,
     ZeroPage,
     ZeroPageX,
@@ -73,40 +76,40 @@ impl Cpu {
         self.run();
     }
 
-    pub fn get_operand_address(&mut self, mode: &AdressingMode) -> u16 {
+    pub fn get_operand_address(&mut self, mode: &AddressingMode) -> u16 {
         match mode {
-            AdressingMode::Immediate => self.program_counter,
-            AdressingMode::ZeroPage => self.mem_read(self.program_counter) as u16,
-            AdressingMode::Absolute => self.mem_read_le(self.program_counter),
+            AddressingMode::Immediate => self.program_counter,
+            AddressingMode::ZeroPage => self.mem_read(self.program_counter) as u16,
+            AddressingMode::Absolute => self.mem_read_le(self.program_counter),
 
-            AdressingMode::ZeroPageX => {
+            AddressingMode::ZeroPageX => {
                 let pos = self.mem_read(self.program_counter);
                 let addr = pos.wrapping_add(self.register_x) as u16;
                 addr
             },
-            AdressingMode::ZeroPageY => {
+            AddressingMode::ZeroPageY => {
                 let pos = self.mem_read(self.program_counter);
                 let addr = pos.wrapping_add(self.register_y) as u16;
                 addr
             },
-            AdressingMode::AbsoluteX => {
+            AddressingMode::AbsoluteX => {
                 let base = self.mem_read_le(self.program_counter);
                 let addr = base.wrapping_add(self.register_x as u16);
                 addr
             },
-            AdressingMode::AbsoluteY => {
+            AddressingMode::AbsoluteY => {
                 let base = self.mem_read_le(self.program_counter);
                 let addr = base.wrapping_add(self.register_y as u16);
                 addr
             },
-            AdressingMode::IndirectX => {
+            AddressingMode::IndirectX => {
                 let base = self.mem_read(self.program_counter);
                 let ptr: u8 = (base as u8).wrapping_add(self.register_x);
                 let lo = self.mem_read(ptr as u16);
                 let hi = self.mem_read(ptr.wrapping_add(1) as u16);
                 (hi as u16) << 8 | (lo as u16)
             },
-            AdressingMode::IndirectY => {
+            AddressingMode::IndirectY => {
                 let base = self.mem_read(self.program_counter);
                 let lo = self.mem_read(base as u16);
                 let hi = self.mem_read((base as u8).wrapping_add(1) as u16);
@@ -114,7 +117,7 @@ impl Cpu {
                 let addr = deref_base.wrapping_add(self.register_y as u16);
                 addr
             },
-            AdressingMode::NoneAdressing => {
+            AddressingMode::NoneAdressing => {
                 panic!("Mode {:?} is not supported", mode);
             }
         }
@@ -125,7 +128,7 @@ impl Cpu {
         self.update_zero_negative_flags(self.register_x);
     }
 
-    pub fn lda(&mut self, mode: &AdressingMode) {
+    pub fn lda(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
 
@@ -133,7 +136,7 @@ impl Cpu {
         self.update_zero_negative_flags(self.register_a);
     }
 
-    pub fn sta(&mut self, mode: &AdressingMode) {
+    pub fn sta(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         self.mem_write(self.register_a, addr);
     }
@@ -157,46 +160,86 @@ impl Cpu {
     }
 
     pub fn run(&mut self) {
+        let ref opcodes: HashMap<u8, &'static opcode::OpCode> = *opcode::OPCODES_MAP;
         loop {
-            let op_code = self.mem_read(self.program_counter);
+            let code = self.mem_read(self.program_counter);
             self.program_counter += 1;
+            let program_counter_state = self.program_counter;
 
-            match op_code {
-                0xA9 => {
-                    self.lda(&AdressingMode::Immediate);
-                    self.program_counter += 1;
+            let opcode = opcodes.get(&code).expect(&format!("OpCode {:x} is unknown !", code));
+
+            match code {
+                /*LDA */
+                0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => {
+                    self.lda(&opcode.mode);
                 },
-                0xA5 => {
-                    self.lda(&AdressingMode::ZeroPage);
-                    self.program_counter += 1;
+                /*STA */
+                0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => {
+                    self.sta(&opcode.mode);
                 },
-                0xAD => {
-                    self.lda(&AdressingMode::Absolute);
-                    self.program_counter += 2;
-                },
-                0x00 => {
-                    return;
-                }
-                0xAA => {
-                    self.tax();
-                    self.program_counter += 1;
-                },
-                0xE8 => {
-                    self.inx();
-                    self.program_counter += 1;
-                },
-                0x85 => {
-                    self.sta(&AdressingMode::ZeroPage);
-                    self.program_counter += 1;
-                },
-                0x95 => {
-                    self.sta(&AdressingMode::ZeroPageX);
-                    self.program_counter += 1;
-                }
-                _ => {
-                    return;
-                }
+                0xE8 => self.inx(),
+                0xAA => self.tax(),
+                0x00 => return,
+                _ => return,
+            }
+            if program_counter_state == self.program_counter {
+                self.program_counter += (opcode.len - 1) as u16;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_0xa9_lda_immediate_load_data() {
+        let mut cpu = Cpu::new();
+        cpu.load_and_run_pg(vec![0xa9, 0x05, 0x00]);
+        assert_eq!(cpu.register_a, 5);
+        assert!(cpu.status & 0b0000_0010 == 0);
+        assert!(cpu.status & 0b1000_0000 == 0);
+    }
+
+    #[test]
+    fn test_0xa9_lda_zero_flag() {
+        let mut cpu = Cpu::new();
+        cpu.load_and_run_pg(vec![0xa9, 0x00, 0x00]);
+        assert!(cpu.status & 0b0000_0010 == 0b10);
+    }
+
+    #[test]
+    fn test_0xaa_tax_move_a_to_x() {
+        let mut cpu = Cpu::new();
+        cpu.load_and_run_pg(vec![0xa9, 0x0A,0xaa, 0x00]);
+
+        assert_eq!(cpu.register_x, 10)
+    }
+
+    #[test]
+    fn test_5_ops_working_together() {
+        let mut cpu = Cpu::new();
+        cpu.load_and_run_pg(vec![0xa9, 0xc0, 0xaa, 0xe8, 0x00]);
+
+        assert_eq!(cpu.register_x, 0xc1)
+    }
+
+    #[test]
+    fn test_inx_overflow() {
+        let mut cpu = Cpu::new();
+        cpu.load_and_run_pg(vec![0xa9, 0xff, 0xaa,0xe8, 0xe8, 0x00]);
+
+        assert_eq!(cpu.register_x, 1)
+    }
+
+    #[test]
+    fn test_lda_from_memory() {
+        let mut cpu = Cpu::new();
+        cpu.mem_write( 0x55, 0x10);
+
+        cpu.load_and_run_pg(vec![0xa5, 0x10, 0x00]);
+
+        assert_eq!(cpu.register_a, 0x55);
     }
 }
