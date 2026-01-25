@@ -141,6 +141,18 @@ impl Cpu {
         self.mem_write(self.register_a, addr);
     }
 
+    pub fn tax(&mut self) {
+        self.register_x = self.register_a;
+        self.update_zero_negative_flags(self.register_x);
+    }
+
+    pub fn and(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+        self.register_a &= value;
+        self.update_zero_negative_flags(self.register_a);
+    }
+
     pub fn update_zero_negative_flags(&mut self, result: u8) {
         if result == 0 {
             self.status |= 0b0000_0010;
@@ -154,11 +166,6 @@ impl Cpu {
         }
     }
 
-    pub fn tax(&mut self) {
-        self.register_x = self.register_a;
-        self.update_zero_negative_flags(self.register_x);
-    }
-
     pub fn run(&mut self) {
         let ref opcodes: HashMap<u8, &'static opcode::OpCode> = *opcode::OPCODES_MAP;
         loop {
@@ -169,6 +176,10 @@ impl Cpu {
             let opcode = opcodes.get(&code).expect(&format!("OpCode {:x} is unknown !", code));
 
             match code {
+                /*AND */
+                0x29 | 0x25 | 0x35| 0x2D| 0x3D| 0x39| 0x21| 0x31 => {
+                    self.and(&opcode.mode);
+                },
                 /*LDA */
                 0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => {
                     self.lda(&opcode.mode);
