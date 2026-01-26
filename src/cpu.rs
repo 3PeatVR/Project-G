@@ -20,6 +20,7 @@ pub enum AddressingMode {
     Absolute,
     AbsoluteX,
     AbsoluteY,
+    Indirect,
     IndirectX,
     IndirectY,
     NoneAdressing,
@@ -85,7 +86,14 @@ impl Cpu {
             AddressingMode::Immediate => self.program_counter,
             AddressingMode::ZeroPage => self.mem_read(self.program_counter) as u16,
             AddressingMode::Absolute => self.mem_read_le(self.program_counter),
-
+            AddressingMode::Indirect => {
+                let ptr = self.mem_read_le(self.program_counter);
+                self.program_counter += 2;
+                let lo = self.mem_read(ptr);
+                let hi_addr = (ptr & 0xFF00) | ((ptr + 1) & 0x00FF);
+                let hi = self.mem_read(hi_addr);
+                (hi as u16) << 8 | (lo as u16)
+            },
             AddressingMode::ZeroPageX => {
                 let pos = self.mem_read(self.program_counter);
                 let addr = pos.wrapping_add(self.register_x) as u16;
@@ -223,6 +231,11 @@ impl Cpu {
         }
     }
 
+    pub fn jmp(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        self.program_counter = addr;
+    }
+
     pub fn update_zero_negative_flags(&mut self, result: u8) {
         if result == 0 {
             self.status |= 0b0000_0010;
@@ -261,6 +274,10 @@ impl Cpu {
                 /*ASL */
                 0x0A | 0x06 | 0x16 | 0x0E | 0x1E => {
                     self.asl(&opcode.mode);
+                },
+                /*JMP */
+                0x4C | 0x6C => {
+                    self.jmp(&opcode.mode);
                 },
                 /*LDA */
                 0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => {
@@ -377,5 +394,11 @@ mod test {
         let mut cpu = Cpu::new();
         cpu.load_and_run_pg(vec![0xA2, 0x0A, 0x86, 0x10, 0x00]);
         assert_eq!(cpu.mem_read(0x10), 0x0A);
+    }
+    #[test]
+    fn test_nop_does_not_stop() {
+        let mut cpu = Cpu::new();
+        cpu.load_and_run_pg(vec![0xEA, 0x00]);
+        assert_eq!(cpu.program_counter, 0x8002);
     }
 }
