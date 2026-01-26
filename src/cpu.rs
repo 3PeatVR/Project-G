@@ -1,5 +1,5 @@
 use crate::opcode;
-use std::collections::HashMap;
+use std::{collections::HashMap};
 
 pub struct Cpu {
     pub register_a: u8,
@@ -12,6 +12,7 @@ pub struct Cpu {
 
 #[derive(Debug)]
 pub enum AddressingMode {
+    Accumulator,
     Immediate,
     ZeroPage,
     ZeroPageX,
@@ -78,6 +79,9 @@ impl Cpu {
 
     pub fn get_operand_address(&mut self, mode: &AddressingMode) -> u16 {
         match mode {
+            AddressingMode::Accumulator => {
+                panic!("Mode {:?} is not supported", mode)
+            },
             AddressingMode::Immediate => self.program_counter,
             AddressingMode::ZeroPage => self.mem_read(self.program_counter) as u16,
             AddressingMode::Absolute => self.mem_read_le(self.program_counter),
@@ -153,6 +157,26 @@ impl Cpu {
         self.update_zero_negative_flags(self.register_a);
     }
 
+    pub fn asl(&mut self, mode: &AddressingMode) {
+        match mode {
+            AddressingMode::Accumulator => {
+                let old = self.register_a;
+                self.update_c_flag(old);
+                let result = old << 1;
+                self.register_a = result;
+                self.update_zero_negative_flags(result);
+            },
+            _ => {
+                let addr = self.get_operand_address(mode);
+                let old = self.mem_read(addr);
+                self.update_c_flag(old);
+                let result = old << 1;
+                self.mem_write(result, addr);
+                self.update_zero_negative_flags(result);
+            }
+        }
+    }
+
     pub fn update_zero_negative_flags(&mut self, result: u8) {
         if result == 0 {
             self.status |= 0b0000_0010;
@@ -163,6 +187,14 @@ impl Cpu {
             self.status |= 0b1000_0000;
         } else {
             self.status &= 0b0111_1111;
+        }
+    }
+
+    pub fn update_c_flag(&mut self, value: u8) {
+        if value & 0x80 != 0 {
+            self.status |= 0b0000_0001;
+        } else {
+            self.status &= 0b1111_1110;
         }
     }
 
@@ -179,6 +211,10 @@ impl Cpu {
                 /*AND */
                 0x29 | 0x25 | 0x35| 0x2D| 0x3D| 0x39| 0x21| 0x31 => {
                     self.and(&opcode.mode);
+                },
+                /*ASL */
+                0x0A | 0x06 | 0x16 | 0x0E | 0x1E => {
+                    self.asl(&opcode.mode);
                 },
                 /*LDA */
                 0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => {
@@ -252,5 +288,21 @@ mod test {
         cpu.load_and_run_pg(vec![0xa5, 0x10, 0x00]);
 
         assert_eq!(cpu.register_a, 0x55);
+    }
+
+    #[test]
+    fn test_asl_accumulator_basic() {
+        let mut cpu = Cpu::new();
+
+        cpu.load_and_run_pg(vec![
+            0xA9, 0b0000_0010,
+            0x0A,
+            0x00,
+        ]);
+
+        assert_eq!(cpu.register_a, 0b0000_0100);
+        assert_eq!(cpu.status & 0b0000_0001, 0);
+        assert_eq!(cpu.status & 0b0000_0010, 0);
+        assert_eq!(cpu.status & 0b1000_0000, 0);
     }
 }

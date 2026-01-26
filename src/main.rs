@@ -2,7 +2,6 @@ mod cpu;
 pub mod opcode;
 use cpu::Cpu;
 
-#[macro_use]
 extern crate lazy_static;
 
 fn main() {
