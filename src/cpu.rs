@@ -140,9 +140,35 @@ impl Cpu {
         self.update_zero_negative_flags(self.register_a);
     }
 
+    pub fn ldx(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        self.register_x = value;
+        self.update_zero_negative_flags(self.register_x);
+    }
+
+    pub fn ldy(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        self.register_y = value;
+        self.update_zero_negative_flags(self.register_y);
+    }
+
     pub fn sta(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         self.mem_write(self.register_a, addr);
+    }
+
+    pub fn stx(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        self.mem_write(self.register_x, addr);
+    }
+
+    pub fn sty(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        self.mem_write(self.register_y, addr);   
     }
 
     pub fn tax(&mut self) {
@@ -220,9 +246,25 @@ impl Cpu {
                 0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => {
                     self.lda(&opcode.mode);
                 },
+                /*LDX */
+                0xA2 | 0xA6 | 0xB6 | 0xAE | 0xBE => {
+                    self.ldx(&opcode.mode);
+                },
+                /*LDY */
+                0xA0 | 0xA4 | 0xB4 | 0xAC | 0xBC => {
+                    self.ldy(&opcode.mode);
+                },
                 /*STA */
                 0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => {
                     self.sta(&opcode.mode);
+                },
+                /*STX */
+                0x86 | 0x96 | 0x8E => {
+                    self.stx(&opcode.mode);
+                },
+                /*STY */
+                0x84 | 0x94 | 0x8C => {
+                    self.sty(&opcode.mode);
                 },
                 0xE8 => self.inx(),
                 0xAA => self.tax(),
@@ -304,5 +346,11 @@ mod test {
         assert_eq!(cpu.status & 0b0000_0001, 0);
         assert_eq!(cpu.status & 0b0000_0010, 0);
         assert_eq!(cpu.status & 0b1000_0000, 0);
+    }
+    #[test]
+    fn test_stx_zero_page() {
+        let mut cpu = Cpu::new();
+        cpu.load_and_run_pg(vec![0xA2, 0x0A, 0x86, 0x10, 0x00]);
+        assert_eq!(cpu.mem_read(0x10), 0x0A);
     }
 }
