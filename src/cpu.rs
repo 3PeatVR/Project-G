@@ -132,6 +132,11 @@ impl Cpu {
         self.update_zero_negative_flags(self.register_x);
     }
 
+    pub fn iny(&mut self) {
+        self.register_y = self.register_x.wrapping_add(1);
+        self.update_zero_negative_flags(self.register_y);
+    }
+
     pub fn lda(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
@@ -282,11 +287,13 @@ impl Cpu {
                     self.sty(&opcode.mode);
                 },
                 0xE8 => self.inx(),
+                0xC8 => self.iny(),
                 0xAA => self.tax(),
                 0xA8 => self.tay(),
                 0x8A => self.txa(),
                 0x98 => self.tya(),
                 0x00 => return,
+                0xEA => {},
                 _ => return,
             }
             if program_counter_state == self.program_counter {
