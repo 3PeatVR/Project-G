@@ -7,6 +7,7 @@ pub struct Cpu {
     pub register_y: u8,
     pub status: u8,
     pub program_counter: u16,
+    pub stack_pointer: u8,
     memory: [u8; 0xFFFF],
 }
 
@@ -34,6 +35,7 @@ impl Cpu {
             register_y: 0,
             status: 0,
             program_counter: 0,
+            stack_pointer: 0xFD,
             memory: [0; 0xFFFF],
         }
     }
@@ -44,6 +46,17 @@ impl Cpu {
         self.register_y = 0;
         self.status = 0;
         self.program_counter = self.mem_read_le(0xFFFC);
+    }
+
+    pub fn stack_pop(&mut self) -> u8 {
+        self.stack_pointer = self.stack_pointer.wrapping_add(1);
+        self.mem_read((0x0100 as u16) + self.stack_pointer as u16)
+    }
+
+    pub fn stack_pop_le(&mut self) -> u16 {
+        let lo = self.stack_pop() as u16;
+        let hi = self.stack_pop() as u16;
+        hi << 8 | lo
     }
 
     pub fn mem_read(&mut self, addr: u16) -> u8 {
@@ -167,6 +180,18 @@ impl Cpu {
 
         self.register_y = value;
         self.update_zero_negative_flags(self.register_y);
+    }
+
+    pub fn rts(&mut self) {
+        self.program_counter = self.stack_pop_le() + 1;
+    }
+
+    pub fn sed(&mut self) {
+        self.status |= 0b0000_1000;
+    }
+
+    pub fn cld(&mut self) {
+        self.status &= 0b1111_0111;
     }
 
     pub fn sta(&mut self, mode: &AddressingMode) {
@@ -311,6 +336,9 @@ impl Cpu {
                 0x98 => self.tya(),
                 0x00 => return,
                 0xEA => {},
+                0x60 => self.rts(),
+                0xF8 => self.sed(),
+                0xD8 => self.cld(),
                 _ => return,
             }
             if program_counter_state == self.program_counter {
