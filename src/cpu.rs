@@ -210,6 +210,10 @@ impl Cpu {
         self.status &= 0b1111_1011;
     }
 
+    pub fn clv(&mut self) {
+        self.status &= 0b1011_1111;
+    }
+
     pub fn sta(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         self.mem_write(self.register_a, addr);
@@ -359,6 +363,7 @@ impl Cpu {
                 0x58 => self.cli(),
                 0x38 => self.sec(),
                 0x18 => self.clc(),
+                0xB8 => self.clv(),
                 _ => return,
             }
             if program_counter_state == self.program_counter {
