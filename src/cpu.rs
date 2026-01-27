@@ -186,6 +186,14 @@ impl Cpu {
         self.program_counter = self.stack_pop_le() + 1;
     }
 
+    pub fn sec(&mut self) {
+        self.status |= 0b0000_0001;
+    }
+
+    pub fn clc(&mut self) {
+        self.status &= 0b1111_1110;
+    }
+
     pub fn sed(&mut self) {
         self.status |= 0b0000_1000;
     }
@@ -349,6 +357,8 @@ impl Cpu {
                 0xD8 => self.cld(),
                 0x78 => self.sei(),
                 0x58 => self.cli(),
+                0x38 => self.sec(),
+                0x18 => self.clc(),
                 _ => return,
             }
             if program_counter_state == self.program_counter {
