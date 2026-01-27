@@ -194,6 +194,14 @@ impl Cpu {
         self.status &= 0b1111_0111;
     }
 
+    pub fn sei(&mut self) {
+        self.status |= 0b0000_0100;
+    }
+
+    pub fn cli(&mut self) {
+        self.status &= 0b1111_1011;
+    }
+
     pub fn sta(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         self.mem_write(self.register_a, addr);
@@ -339,6 +347,8 @@ impl Cpu {
                 0x60 => self.rts(),
                 0xF8 => self.sed(),
                 0xD8 => self.cld(),
+                0x78 => self.sei(),
+                0x58 => self.cli(),
                 _ => return,
             }
             if program_counter_state == self.program_counter {
