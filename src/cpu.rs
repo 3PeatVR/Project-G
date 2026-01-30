@@ -298,6 +298,19 @@ impl Cpu {
         self.program_counter = addr;
     }
 
+    pub fn bit(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let data = self.mem_read(addr);
+        let and = self.register_a & data;
+
+        if and == 0 {
+            self.status |= 0b0000_0010;
+        } else {
+            self.status &= 0b1111_1101;
+        }
+        self.status = (self.status & !(0b1000_0000 | 0b01000_0000)) | (data & (0b1000_0000 | 0b01000_0000));
+    }
+
     pub fn update_zero_negative_flags(&mut self, result: u8) {
         if result == 0 {
             self.status |= 0b0000_0010;
@@ -336,6 +349,10 @@ impl Cpu {
                 /*ASL */
                 0x0A | 0x06 | 0x16 | 0x0E | 0x1E => {
                     self.asl(&opcode.mode);
+                },
+                /*BIT */
+                0x24 | 0x2C => {
+                    self.bit(&opcode.mode);
                 },
                 /*JMP */
                 0x4C | 0x6C => {
