@@ -59,6 +59,15 @@ impl Cpu {
         hi << 8 | lo
     }
 
+    pub fn branch(&mut self, cond: bool) {
+        if cond {
+            let jump: i8 = self.mem_read(self.program_counter) as i8;
+            let jump_addr = self.program_counter.wrapping_add(1).wrapping_add(jump as u16);
+
+            self.program_counter = jump_addr;
+        }
+    }
+
     pub fn mem_read(&mut self, addr: u16) -> u8 {
         self.memory[addr as usize]
     }
@@ -144,7 +153,7 @@ impl Cpu {
             },
             AddressingMode::NoneAdressing => {
                 panic!("Mode {:?} is not supported", mode);
-            }
+            },
         }
     }
 
@@ -242,6 +251,14 @@ impl Cpu {
     pub fn txa(&mut self) {
         self.register_a = self.register_x;
         self.update_zero_negative_flags(self.register_a);
+    }
+
+    pub fn txs(&mut self) {
+        self.stack_pointer = self.register_x;
+    }
+
+    pub fn tsx(&mut self) {
+        self.register_x = self.stack_pointer;
     }
 
     pub fn tya(&mut self) {
@@ -354,6 +371,8 @@ impl Cpu {
                 0xA8 => self.tay(),
                 0x8A => self.txa(),
                 0x98 => self.tya(),
+                0x9A => self.txs(),
+                0xBA => self.tsx(),
                 0x00 => return,
                 0xEA => {},
                 0x60 => self.rts(),
@@ -364,6 +383,14 @@ impl Cpu {
                 0x38 => self.sec(),
                 0x18 => self.clc(),
                 0xB8 => self.clv(),
+                0x90 => self.branch(self.status & 0b0000_0001 == 0),
+                0xB0 => self.branch(self.status & 0b0000_0001 != 0),
+                0xF0 => self.branch(self.status & 0b0000_0010 != 0),
+                0x30 => self.branch(self.status & 0b1000_0000 != 0),
+                0xD0 => self.branch(self.status & 0b0000_0010 == 0),
+                0x10 => self.branch(self.status & 0b1000_0000 == 0),
+                0x50 => self.branch(self.status & 0b0100_0000 == 0),
+                0x70 => self.branch(self.status & 0b0100_0000 != 0),
                 _ => return,
             }
             if program_counter_state == self.program_counter {

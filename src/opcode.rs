@@ -24,7 +24,15 @@ impl OpCode {
 
 lazy_static! {
     pub static ref CPU_OP_CODES: Vec<OpCode> = vec![
+        OpCode::new(0x90, "BCC", 2, 2 /*+1 if succeeds, 2 if new page */, AddressingMode::NoneAdressing),
+        OpCode::new(0xB0, "BCC", 2, 2 /*+1 if succeeds, 2 if new page */, AddressingMode::NoneAdressing),
+        OpCode::new(0xF0, "BEQ", 2, 2 /*+1 if succeeds, 2 if new page */, AddressingMode::NoneAdressing),
+        OpCode::new(0x30, "BMI", 2, 2 /*+1 if succeeds, 2 if new page */, AddressingMode::NoneAdressing),
+        OpCode::new(0xD0, "BNE", 2, 2 /*+1 if succeeds, 2 if new page */, AddressingMode::NoneAdressing),
+        OpCode::new(0x10, "BPL", 2, 2 /*+1 if succeeds, 2 if new page */, AddressingMode::NoneAdressing),
         OpCode::new(0x00, "BRK", 1, 7, AddressingMode::NoneAdressing),
+        OpCode::new(0x50, "BVC", 2, 2 /*+1 if succeeds, 2 if new page */, AddressingMode::NoneAdressing),
+        OpCode::new(0x70, "BVS", 2, 2 /*+1 if succeeds, 2 if new page */, AddressingMode::NoneAdressing),
         OpCode::new(0x18, "CLC", 1, 2, AddressingMode::NoneAdressing),
         OpCode::new(0xD8, "CLD", 1, 2, AddressingMode::NoneAdressing),
         OpCode::new(0x58, "CLI", 1, 2, AddressingMode::NoneAdressing),
@@ -34,8 +42,11 @@ lazy_static! {
         OpCode::new(0xAA, "TAX", 1, 2, AddressingMode::NoneAdressing),
         OpCode::new(0xA8, "TAY", 1, 2, AddressingMode::NoneAdressing),
         OpCode::new(0x8A, "TXA", 1, 2, AddressingMode::NoneAdressing),
+        OpCode::new(0x9A, "TXS", 1, 2, AddressingMode::NoneAdressing),
+        OpCode::new(0xBA, "TSX", 1, 2, AddressingMode::NoneAdressing),
         OpCode::new(0x98, "TYA", 1, 2, AddressingMode::NoneAdressing),
         OpCode::new(0xEA, "NOP", 1, 2, AddressingMode::NoneAdressing),
+        //OpCode::new(0x40, "RTI", 1, 6, AddressingMode::NoneAdressing),
         OpCode::new(0x60, "RTS", 1, 6, AddressingMode::NoneAdressing),
         OpCode::new(0x38, "SEC", 1, 2, AddressingMode::NoneAdressing),
         OpCode::new(0xF8, "SED", 1, 2, AddressingMode::NoneAdressing),
