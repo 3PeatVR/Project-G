@@ -151,6 +151,12 @@ lazy_static! {
         OpCode::new(0x19, "ORA", 3, 4 /*+1 if crossed */, AddressingMode::AbsoluteY),
         OpCode::new(0x01, "ORA", 2, 6, AddressingMode::IndirectX),
         OpCode::new(0x11, "ORA", 2, 5 /*+1 if crossed */, AddressingMode::IndirectY),
+        /*ROL */
+        OpCode::new(0x2A, "ROL", 1, 2, AddressingMode::Accumulator),
+        OpCode::new(0x26, "ROL", 2, 5, AddressingMode::ZeroPage),
+        OpCode::new(0x36, "ROL", 2, 6, AddressingMode::ZeroPageX),
+        OpCode::new(0x2E, "ROL", 3, 6, AddressingMode::Absolute),
+        OpCode::new(0x3E, "ROL", 3, 7, AddressingMode::AbsoluteX),
         /*STA */
         OpCode::new(0x85, "STA", 2, 3, AddressingMode::ZeroPage),
         OpCode::new(0x95, "STA", 2, 4, AddressingMode::ZeroPageX),

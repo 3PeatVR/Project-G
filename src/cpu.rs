@@ -338,6 +338,24 @@ impl Cpu {
         self.status &= 0b1011_1111;
     }
 
+    pub fn rol(&mut self, mode: &AddressingMode) ->u8 {
+        let addr = self.get_operand_address(mode);
+        let mut value = self.mem_read(addr);
+        let old_carry = self.status & 0b0000_0001 != 0;
+
+        if value >> 7 == 1 {
+            self.status |= 0b0000_0001;
+        } else {
+            self.status &= !(0b0000_0001);
+        }
+        if old_carry {
+            value = value << 1 | 1;
+        }
+        self.mem_write(value, addr);
+        self.update_zero_negative_flags(value);
+        value
+    }
+
     pub fn sta(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         self.mem_write(self.register_a, addr);
@@ -516,6 +534,10 @@ impl Cpu {
                 /*ORA */
                 0x09 | 0x05 | 0x15 | 0x0D | 0x1D | 0x19 | 0x01 | 0x11 => {
                     self.ora(&opcode.mode);
+                },
+                /*ROL */
+                0x2A | 0x26 | 0x36 | 0x2E | 0x3E => {
+                    self.rol(&opcode.mode);
                 },
                 /*STA */
                 0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => {
