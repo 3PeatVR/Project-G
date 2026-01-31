@@ -93,6 +93,15 @@ lazy_static! {
         OpCode::new(0xD6, "DEC", 2, 6, AddressingMode::ZeroPageX),
         OpCode::new(0xCE, "DEC", 3, 6, AddressingMode::Absolute),
         OpCode::new(0xDE, "DEC", 3, 7, AddressingMode::AbsoluteX),
+        /*EOR */
+        OpCode::new(0x49, "EOR", 2, 2, AddressingMode::NoneAdressing),
+        OpCode::new(0x45, "EOR", 2, 3, AddressingMode::ZeroPage),
+        OpCode::new(0x55, "EOR", 2, 4, AddressingMode::ZeroPageX),
+        OpCode::new(0x4D, "EOR", 3, 4, AddressingMode::Absolute),
+        OpCode::new(0x5D, "EOR", 3, 4 /*+1 if crossed */, AddressingMode::AbsoluteX),
+        OpCode::new(0x59, "EOR", 3, 4 /*+1 if crossed */, AddressingMode::AbsoluteY),
+        OpCode::new(0x41, "EOR", 2, 6, AddressingMode::IndirectX),
+        OpCode::new(0x51, "EOR", 2, 5 /*+1 if crossed */, AddressingMode::IndirectY),
         /*JMP */
         OpCode::new(0x4C, "JMP", 3, 3, AddressingMode::Absolute),
         OpCode::new(0x6C, "JMP", 3, 5, AddressingMode::Indirect),
