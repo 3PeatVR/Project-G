@@ -253,6 +253,12 @@ impl Cpu {
         self.update_zero_negative_flags(self.register_a);
     }
 
+    pub fn plp(&mut self) {
+        self.status = self.stack_pop();
+        self.status &= !(0b0001_0000);
+        self.status |= 0b0010_0000;
+    }
+
     pub fn lda(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
@@ -555,6 +561,7 @@ impl Cpu {
                 0x48 => self.pha(),
                 0x08 => self.php(),
                 0x68 => self.pla(),
+                0x28 => self.plp(),
                 _ => return,
             }
             if program_counter_state == self.program_counter {
