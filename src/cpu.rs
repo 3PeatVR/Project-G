@@ -384,6 +384,10 @@ impl Cpu {
                 0xE0 | 0xE4 | 0xEC => {
                     self.compare(&opcode.mode, self.register_x);
                 },
+                /*CPY */
+                0xC0 | 0xC4 | 0xCC => {
+                    self.compare(&opcode.mode, self.register_y);
+                },
                 /*JMP */
                 0x4C | 0x6C => {
                     self.jmp(&opcode.mode);

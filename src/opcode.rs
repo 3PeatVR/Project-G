@@ -82,6 +82,10 @@ lazy_static! {
         OpCode::new(0xE0, "CPX", 2, 2, AddressingMode::NoneAdressing),
         OpCode::new(0xE4, "CPX", 2, 3, AddressingMode::ZeroPage),
         OpCode::new(0xEC, "CPX", 3, 4, AddressingMode::Absolute),
+        /*CPY */
+        OpCode::new(0xC0, "CPY", 2, 2, AddressingMode::NoneAdressing),
+        OpCode::new(0xC4, "CPY", 2, 3, AddressingMode::ZeroPage),
+        OpCode::new(0xCC, "CPY", 3, 4, AddressingMode::Absolute),
         /*JMP */
         OpCode::new(0x4C, "JMP", 3, 3, AddressingMode::Absolute),
         OpCode::new(0x6C, "JMP", 3, 5, AddressingMode::Indirect),
