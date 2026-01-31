@@ -356,6 +356,15 @@ impl Cpu {
         value
     }
 
+    pub fn sbc(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        self.register_a = (value as i8).wrapping_neg().wrapping_sub(1) as u8;
+        self.update_c_flag(self.register_a);
+        self.update_zero_negative_flags(self.register_a);
+    }
+
     pub fn sta(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         self.mem_write(self.register_a, addr);
@@ -538,6 +547,10 @@ impl Cpu {
                 /*ROL */
                 0x2A | 0x26 | 0x36 | 0x2E | 0x3E => {
                     self.rol(&opcode.mode);
+                },
+                /*SBC */
+                0xE9 | 0xE5 | 0xF5 | 0xED | 0xFD | 0xF9 | 0xE1 | 0xF1 => {
+                    self.sbc(&opcode.mode);
                 },
                 /*STA */
                 0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => {
