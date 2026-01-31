@@ -59,7 +59,7 @@ lazy_static! {
         OpCode::new(0xF8, "SED", 1, 2, AddressingMode::NoneAdressing),
         OpCode::new(0x78, "SEI", 1, 2, AddressingMode::NoneAdressing),
         /*ADC */
-        OpCode::new(0x69, "ADC", 2, 2, AddressingMode::NoneAdressing),
+        OpCode::new(0x69, "ADC", 2, 2, AddressingMode::Immediate),
         OpCode::new(0x65, "ADC", 2, 3, AddressingMode::ZeroPage),
         OpCode::new(0x75, "ADC", 2, 4, AddressingMode::ZeroPageX),
         OpCode::new(0x6D, "ADC", 3, 4, AddressingMode::Absolute),
@@ -68,7 +68,7 @@ lazy_static! {
         OpCode::new(0x61, "ADC", 2, 6, AddressingMode::IndirectX),
         OpCode::new(0x71, "ADC", 2, 5 /*+1 if crossed */, AddressingMode::IndirectY),
         /*AND */
-        OpCode::new(0x29, "AND", 2, 2, AddressingMode::NoneAdressing),
+        OpCode::new(0x29, "AND", 2, 2, AddressingMode::Immediate),
         OpCode::new(0x25, "AND", 2, 3, AddressingMode::ZeroPage),
         OpCode::new(0x35, "AND", 2, 4, AddressingMode::ZeroPageX),
         OpCode::new(0x2D, "AND", 3, 4, AddressingMode::Absolute),
@@ -86,7 +86,7 @@ lazy_static! {
         OpCode::new(0x24, "BIT", 2, 3, AddressingMode::ZeroPage),
         OpCode::new(0x2C, "BIT", 3, 4, AddressingMode::Absolute),
         /*CMP */
-        OpCode::new(0xC9, "CMP", 2, 2, AddressingMode::NoneAdressing),
+        OpCode::new(0xC9, "CMP", 2, 2, AddressingMode::Immediate),
         OpCode::new(0xC5, "CMP", 2, 3, AddressingMode::ZeroPage),
         OpCode::new(0xD5, "CMP", 2, 4, AddressingMode::ZeroPageX),
         OpCode::new(0xCD, "CMP", 3, 4, AddressingMode::Absolute),
@@ -95,11 +95,11 @@ lazy_static! {
         OpCode::new(0xC1, "CMP", 2, 6, AddressingMode::IndirectX),
         OpCode::new(0xD1, "CMP", 2, 5 /*+1 if crossed */, AddressingMode::IndirectY),
         /*CPX */
-        OpCode::new(0xE0, "CPX", 2, 2, AddressingMode::NoneAdressing),
+        OpCode::new(0xE0, "CPX", 2, 2, AddressingMode::Immediate),
         OpCode::new(0xE4, "CPX", 2, 3, AddressingMode::ZeroPage),
         OpCode::new(0xEC, "CPX", 3, 4, AddressingMode::Absolute),
         /*CPY */
-        OpCode::new(0xC0, "CPY", 2, 2, AddressingMode::NoneAdressing),
+        OpCode::new(0xC0, "CPY", 2, 2, AddressingMode::Immediate),
         OpCode::new(0xC4, "CPY", 2, 3, AddressingMode::ZeroPage),
         OpCode::new(0xCC, "CPY", 3, 4, AddressingMode::Absolute),
         /*DEC */
@@ -108,7 +108,7 @@ lazy_static! {
         OpCode::new(0xCE, "DEC", 3, 6, AddressingMode::Absolute),
         OpCode::new(0xDE, "DEC", 3, 7, AddressingMode::AbsoluteX),
         /*EOR */
-        OpCode::new(0x49, "EOR", 2, 2, AddressingMode::NoneAdressing),
+        OpCode::new(0x49, "EOR", 2, 2, AddressingMode::Immediate),
         OpCode::new(0x45, "EOR", 2, 3, AddressingMode::ZeroPage),
         OpCode::new(0x55, "EOR", 2, 4, AddressingMode::ZeroPageX),
         OpCode::new(0x4D, "EOR", 3, 4, AddressingMode::Absolute),
@@ -152,7 +152,7 @@ lazy_static! {
         OpCode::new(0x4E, "LSR", 3, 6, AddressingMode::Absolute),
         OpCode::new(0x5E, "LSR", 3, 7, AddressingMode::AbsoluteX),
         /*ORA */
-        OpCode::new(0x09, "ORA", 2, 2, AddressingMode::NoneAdressing),
+        OpCode::new(0x09, "ORA", 2, 2, AddressingMode::Immediate),
         OpCode::new(0x05, "ORA", 2, 3, AddressingMode::ZeroPage),
         OpCode::new(0x15, "ORA", 2, 4, AddressingMode::ZeroPageX),
         OpCode::new(0x0D, "ORA", 3, 4, AddressingMode::Absolute),
@@ -173,7 +173,7 @@ lazy_static! {
         OpCode::new(0x6E, "ROR", 3, 6, AddressingMode::Absolute),
         OpCode::new(0x7E, "ROR", 3, 7, AddressingMode::AbsoluteX),
         /*SBC */
-        OpCode::new(0xE9, "SBC", 2, 2, AddressingMode::NoneAdressing),
+        OpCode::new(0xE9, "SBC", 2, 2, AddressingMode::Immediate),
         OpCode::new(0xE5, "SBC", 2, 3, AddressingMode::ZeroPage),
         OpCode::new(0xF5, "SBC", 2, 4, AddressingMode::ZeroPageX),
         OpCode::new(0xED, "SBC", 3, 4, AddressingMode::Absolute),

@@ -745,4 +745,20 @@ mod test {
         cpu.load_and_run_pg(vec![0xEA, 0x00]);
         assert_eq!(cpu.program_counter, 0x8002);
     }
+
+#[test]
+fn debug_branch_pc() {
+    let mut cpu = Cpu::new();
+
+    cpu.load_and_run_pg(vec![
+        0xD0, 0x02,
+        0x00,
+    ]);
+
+    assert_eq!(cpu.program_counter, 0x8003);
+}
+
+
+
+
 }
