@@ -157,22 +157,22 @@ impl Cpu {
         }
     }
 
-    pub fn cmp(&mut self, mode: &AddressingMode) {
+    pub fn compare(&mut self, mode: &AddressingMode, compared: u8) {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
         
-        if self.register_a >= value {
+        if compared >= value {
             self.status |= 0b0000_0001;
         } else {
             self.status &= !(0b0000_0001)
         }
-        if self.register_a == value {
+        if compared == value {
             self.status |= 0b0000_0010;
         } else {
             self.status &= !(0b0000_0010);
         }
 
-        if self.register_a.wrapping_sub(value) & 0b1000_0000 != 0 {
+        if compared.wrapping_sub(value) & 0b1000_0000 != 0 {
             self.status |= 0b1000_0000;
         } else {
             self.status &= !(0b1000_0000);
@@ -378,7 +378,11 @@ impl Cpu {
                 },
                 /*CMP */
                 0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => {
-                    self.cmp(&opcode.mode);
+                    self.compare(&opcode.mode, self.register_a);
+                },
+                /*CPX */
+                0xE0 | 0xE4 | 0xEC => {
+                    self.compare(&opcode.mode, self.register_x);
                 },
                 /*JMP */
                 0x4C | 0x6C => {
