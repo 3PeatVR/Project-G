@@ -194,6 +194,14 @@ impl Cpu {
         self.update_zero_negative_flags(self.register_a);
     }
 
+    pub fn inc(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+        let result = value.wrapping_add(1);
+        self.mem_write(result, addr);
+        self.update_zero_negative_flags(result);
+    }
+
     pub fn dex(&mut self) {
         self.register_x = self.register_x.wrapping_sub(1);
         self.update_zero_negative_flags(self.register_x);
@@ -420,6 +428,10 @@ impl Cpu {
                 /*EOR */
                 0x49 | 0x45 | 0x55 | 0x4D | 0x5D | 0x59 | 0x41 | 0x51 => {
                     self.eor(&opcode.mode);
+                },
+                /*INC */
+                0xE6 | 0xF6 | 0xEE | 0xFE => {
+                    self.inc(&opcode.mode);
                 },
                 /*JMP */
                 0x4C | 0x6C => {
