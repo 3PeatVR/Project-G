@@ -240,6 +240,10 @@ impl Cpu {
         self.program_counter = target_address;
     }
 
+    pub fn pha(&mut self) {
+        self.stack_push(self.register_a);
+    }
+
     pub fn lda(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
@@ -539,6 +543,7 @@ impl Cpu {
                 0xCA => self.dex(),
                 0x88 => self.dey(),
                 0x20 => self.jsr(),
+                0x48 => self.pha(),
                 _ => return,
             }
             if program_counter_state == self.program_counter {
