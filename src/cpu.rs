@@ -376,6 +376,13 @@ impl Cpu {
         value
     }
 
+    pub fn rti(&mut self) {
+        self.status = self.stack_pop();
+        self.status &= !(0b0001_0000);
+        self.status |= 0b0010_0000;
+        self.program_counter = self.stack_pop_le();
+    }
+
     pub fn sbc(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
@@ -428,11 +435,33 @@ impl Cpu {
         self.update_zero_negative_flags(self.register_a);
     }
 
+    pub fn adc(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+        self.register_a = self.register_a.wrapping_add(value);
+    }
+
     pub fn and(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
-        self.register_a &= value;
-        self.update_zero_negative_flags(self.register_a);
+        let sum = self.register_a as u16 + value as u16 + (if self.status & 0b0000_0001 != 0 {1} else {0}) as u16;
+
+        let carry = sum > 0xFF;
+        if carry {
+            self.status |= 0b0000_0001;   
+        } else {
+            self.status &= !(0b0000_0001);
+        }
+
+        let result = sum as u8;
+        if (value ^ result) & (result ^ self.register_a) & 0x80 != 0 {
+            self.status |= 0b0100_0000;
+        } else {
+            self.status &= !(0b0100_0000);
+        }
+
+        self.register_a = value;
+        self.update_zero_negative_flags(value);
     }
 
     pub fn asl(&mut self, mode: &AddressingMode) {
@@ -504,6 +533,10 @@ impl Cpu {
             let opcode = opcodes.get(&code).expect(&format!("OpCode {:x} is unknown !", code));
 
             match code {
+                /*ADC */
+                0x69 | 0x65 | 0x75 | 0x6D | 0x7D | 0x79 | 0x61 | 0x71 => {
+                    self.adc(&opcode.mode);
+                },
                 /*AND */
                 0x29 | 0x25 | 0x35| 0x2D| 0x3D| 0x39| 0x21| 0x31 => {
                     self.and(&opcode.mode);
@@ -621,6 +654,7 @@ impl Cpu {
                 0x08 => self.php(),
                 0x68 => self.pla(),
                 0x28 => self.plp(),
+                0x40 => self.rti(),
                 _ => return,
             }
             if program_counter_state == self.program_counter {
