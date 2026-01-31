@@ -746,6 +746,7 @@ mod test {
         assert_eq!(cpu.program_counter, 0x8002);
     }
 
+// Cassé :'(
 #[test]
 fn debug_branch_pc() {
     let mut cpu = Cpu::new();
@@ -758,6 +759,38 @@ fn debug_branch_pc() {
     assert_eq!(cpu.program_counter, 0x8003);
 }
 
+
+// cassé
+#[test]
+fn test_adc_overflow_flag() {
+    let mut cpu = Cpu::new();
+    cpu.load_and_run_pg(vec![0xA9, 0x50, 0x69, 0x50, 0x00]); // LDA #$50, ADC #$50
+    assert!(cpu.status & 0b0100_0000 == 0b0100_0000);
+}
+
+#[test]
+fn test_sbc_immediate_simple() {
+    let mut cpu = Cpu::new();
+    cpu.load_and_run_pg(vec![0x38, 0xA9, 0x50, 0xE9, 0x20, 0x00]); // SEC, LDA #$50, SBC #$20
+    assert_eq!(cpu.register_a, 0x30);
+}
+
+#[test]
+fn test_sbc_borrow() {
+    let mut cpu = Cpu::new();
+    cpu.load_and_run_pg(vec![0x38, 0xA9, 0x20, 0xE9, 0x30, 0x00]); // SEC, LDA #$20, SBC #$30
+    assert_eq!(cpu.register_a, 0xF0);
+    assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
+}
+
+
+#[test]
+fn test_and_zero_flag() {
+    let mut cpu = Cpu::new();
+    cpu.load_and_run_pg(vec![0xA9, 0xF0, 0x29, 0x0F, 0x00]); // LDA #$F0, AND #$0F
+    assert_eq!(cpu.register_a, 0x00);
+    assert!(cpu.status & 0b0000_0010 == 0b10);
+}
 
 
 
