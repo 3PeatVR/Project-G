@@ -179,6 +179,14 @@ impl Cpu {
         }
     }
 
+    pub fn dec(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+        let result = value.wrapping_sub(1);
+        self.mem_write(result, addr);
+        self.update_zero_negative_flags(result);
+    }
+
     pub fn inx(&mut self) {
         self.register_x = self.register_x.wrapping_add(1);
         self.update_zero_negative_flags(self.register_x);
@@ -387,6 +395,10 @@ impl Cpu {
                 /*CPY */
                 0xC0 | 0xC4 | 0xCC => {
                     self.compare(&opcode.mode, self.register_y);
+                },
+                /*DEC */
+                0xC6 | 0xD6 | 0xCE | 0xDE => {
+                    self.dec(&opcode.mode);
                 },
                 /*JMP */
                 0x4C | 0x6C => {
