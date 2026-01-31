@@ -25,7 +25,7 @@ impl OpCode {
 lazy_static! {
     pub static ref CPU_OP_CODES: Vec<OpCode> = vec![
         OpCode::new(0x90, "BCC", 2, 2 /*+1 if succeeds, 2 if new page */, AddressingMode::NoneAdressing),
-        OpCode::new(0xB0, "BCC", 2, 2 /*+1 if succeeds, 2 if new page */, AddressingMode::NoneAdressing),
+        OpCode::new(0xB0, "BCS", 2, 2 /*+1 if succeeds, 2 if new page */, AddressingMode::NoneAdressing),
         OpCode::new(0xF0, "BEQ", 2, 2 /*+1 if succeeds, 2 if new page */, AddressingMode::NoneAdressing),
         OpCode::new(0x30, "BMI", 2, 2 /*+1 if succeeds, 2 if new page */, AddressingMode::NoneAdressing),
         OpCode::new(0xD0, "BNE", 2, 2 /*+1 if succeeds, 2 if new page */, AddressingMode::NoneAdressing),
