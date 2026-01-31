@@ -264,6 +264,20 @@ impl Cpu {
         self.update_zero_negative_flags(self.register_y);
     }
 
+    pub fn lsr(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        if value & 1 == 1 {
+            self.status |= 0b0000_0001; 
+        } else {
+            self.status &= !(0b0000_0001);
+        }
+
+        self.mem_write(value >> 1, addr);
+        self.update_zero_negative_flags(value >> 1);
+    }
+
     pub fn rts(&mut self) {
         self.program_counter = self.stack_pop_le() + 1;
     }
@@ -466,6 +480,10 @@ impl Cpu {
                 /*LDY */
                 0xA0 | 0xA4 | 0xB4 | 0xAC | 0xBC => {
                     self.ldy(&opcode.mode);
+                },
+                /*LSR */
+                0x4A | 0x46 | 0x56 | 0x4E | 0x5E => {
+                    self.lsr(&opcode.mode);
                 },
                 /*STA */
                 0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => {
