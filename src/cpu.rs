@@ -157,6 +157,28 @@ impl Cpu {
         }
     }
 
+    pub fn cmp(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+        
+        if self.register_a >= value {
+            self.status |= 0b0000_0001;
+        } else {
+            self.status &= !(0b0000_0001)
+        }
+        if self.register_a == value {
+            self.status |= 0b0000_0010;
+        } else {
+            self.status &= !(0b0000_0010);
+        }
+
+        if self.register_a.wrapping_sub(value) & 0b1000_0000 != 0 {
+            self.status |= 0b1000_0000;
+        } else {
+            self.status &= !(0b1000_0000);
+        }
+    }
+
     pub fn inx(&mut self) {
         self.register_x = self.register_x.wrapping_add(1);
         self.update_zero_negative_flags(self.register_x);
@@ -353,6 +375,10 @@ impl Cpu {
                 /*BIT */
                 0x24 | 0x2C => {
                     self.bit(&opcode.mode);
+                },
+                /*CMP */
+                0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => {
+                    self.cmp(&opcode.mode);
                 },
                 /*JMP */
                 0x4C | 0x6C => {

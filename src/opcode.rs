@@ -69,6 +69,15 @@ lazy_static! {
         /*BIT */
         OpCode::new(0x24, "BIT", 2, 3, AddressingMode::ZeroPage),
         OpCode::new(0x2C, "BIT", 3, 4, AddressingMode::Absolute),
+        /*CMP */
+        OpCode::new(0xC9, "CMP", 2, 2, AddressingMode::NoneAdressing),
+        OpCode::new(0xC5, "CMP", 2, 3, AddressingMode::ZeroPage),
+        OpCode::new(0xD5, "CMP", 2, 4, AddressingMode::ZeroPageX),
+        OpCode::new(0xCD, "CMP", 3, 4, AddressingMode::Absolute),
+        OpCode::new(0xDD, "CMP", 3, 4 /*+ 1 if page crossed */, AddressingMode::AbsoluteX),
+        OpCode::new(0xD9, "CMP", 3, 4 /*+1 if page crossed */, AddressingMode::AbsoluteY),
+        OpCode::new(0xC1, "CMP", 2, 6, AddressingMode::IndirectX),
+        OpCode::new(0xD1, "CMP", 2, 5 /*+1 if page crossed */, AddressingMode::IndirectY),
         /*JMP */
         OpCode::new(0x4C, "JMP", 3, 3, AddressingMode::Absolute),
         OpCode::new(0x6C, "JMP", 3, 5, AddressingMode::Indirect),
