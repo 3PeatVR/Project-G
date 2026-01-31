@@ -278,6 +278,15 @@ impl Cpu {
         self.update_zero_negative_flags(value >> 1);
     }
 
+    pub fn ora(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        let result = self.register_a | value;
+        self.register_a = result;
+        self.update_zero_negative_flags(result);
+    }
+
     pub fn rts(&mut self) {
         self.program_counter = self.stack_pop_le() + 1;
     }
@@ -484,6 +493,10 @@ impl Cpu {
                 /*LSR */
                 0x4A | 0x46 | 0x56 | 0x4E | 0x5E => {
                     self.lsr(&opcode.mode);
+                },
+                /*ORA */
+                0x09 | 0x05 | 0x15 | 0x0D | 0x1D | 0x19 | 0x01 | 0x11 => {
+                    self.ora(&opcode.mode);
                 },
                 /*STA */
                 0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => {
