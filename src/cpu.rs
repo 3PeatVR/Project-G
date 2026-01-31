@@ -187,6 +187,16 @@ impl Cpu {
         self.update_zero_negative_flags(result);
     }
 
+    pub fn dex(&mut self) {
+        self.register_x = self.register_x.wrapping_sub(1);
+        self.update_zero_negative_flags(self.register_x);
+    }
+
+    pub fn dey(&mut self) {
+        self.register_y = self.register_y.wrapping_sub(1);
+        self.update_zero_negative_flags(self.register_y);
+    }
+
     pub fn inx(&mut self) {
         self.register_x = self.register_x.wrapping_add(1);
         self.update_zero_negative_flags(self.register_x);
@@ -454,6 +464,8 @@ impl Cpu {
                 0x10 => self.branch(self.status & 0b1000_0000 == 0),
                 0x50 => self.branch(self.status & 0b0100_0000 == 0),
                 0x70 => self.branch(self.status & 0b0100_0000 != 0),
+                0xCA => self.dex(),
+                0x88 => self.dey(),
                 _ => return,
             }
             if program_counter_state == self.program_counter {

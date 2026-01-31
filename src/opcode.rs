@@ -37,6 +37,8 @@ lazy_static! {
         OpCode::new(0xD8, "CLD", 1, 2, AddressingMode::NoneAdressing),
         OpCode::new(0x58, "CLI", 1, 2, AddressingMode::NoneAdressing),
         OpCode::new(0xB8, "CLV", 1, 2, AddressingMode::NoneAdressing),
+        OpCode::new(0xCA, "DEX", 1, 2, AddressingMode::NoneAdressing),
+        OpCode::new(0x88, "DEY", 1, 2, AddressingMode::NoneAdressing),
         OpCode::new(0xE8, "INX", 1, 2, AddressingMode::NoneAdressing),
         OpCode::new(0xC8, "INY", 1, 2, AddressingMode::NoneAdressing),
         OpCode::new(0xAA, "TAX", 1, 2, AddressingMode::NoneAdressing),
