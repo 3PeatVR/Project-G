@@ -59,6 +59,18 @@ impl Cpu {
         hi << 8 | lo
     }
 
+    pub fn stack_push(&mut self, data: u8) {
+        self.mem_write(data, (0x0100 as u16) + self.stack_pointer as u16);
+        self.stack_pointer = self.stack_pointer.wrapping_sub(1)
+    }
+
+    pub fn stack_push_le(&mut self, data: u16) {
+        let hi = (data >> 8) as u8;
+        let lo = (data & 0xFF) as u8;
+        self.stack_push(hi);
+        self.stack_push(lo);
+    }
+
     pub fn branch(&mut self, cond: bool) {
         if cond {
             let jump: i8 = self.mem_read(self.program_counter) as i8;
@@ -220,6 +232,12 @@ impl Cpu {
     pub fn iny(&mut self) {
         self.register_y = self.register_x.wrapping_add(1);
         self.update_zero_negative_flags(self.register_y);
+    }
+
+    pub fn jsr(&mut self) {
+        self.stack_push_le(self.program_counter + 2 - 1);
+        let target_address = self.mem_read_le(self.program_counter);
+        self.program_counter = target_address;
     }
 
     pub fn lda(&mut self, mode: &AddressingMode) {
@@ -489,6 +507,7 @@ impl Cpu {
                 0x70 => self.branch(self.status & 0b0100_0000 != 0),
                 0xCA => self.dex(),
                 0x88 => self.dey(),
+                0x20 => self.jsr(),
                 _ => return,
             }
             if program_counter_state == self.program_counter {
