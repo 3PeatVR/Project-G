@@ -44,6 +44,8 @@ lazy_static! {
         OpCode::new(0x20, "JSR", 3, 6, AddressingMode::NoneAdressing),
         OpCode::new(0xEA, "NOP", 1, 2, AddressingMode::NoneAdressing),
         OpCode::new(0x48, "PHA", 1, 3, AddressingMode::NoneAdressing),
+        OpCode::new(0x08, "PHP", 1, 3, AddressingMode::NoneAdressing),
+        OpCode::new(0x68, "PLA", 1, 4, AddressingMode::NoneAdressing),
         OpCode::new(0xAA, "TAX", 1, 2, AddressingMode::NoneAdressing),
         OpCode::new(0xA8, "TAY", 1, 2, AddressingMode::NoneAdressing),
         OpCode::new(0x8A, "TXA", 1, 2, AddressingMode::NoneAdressing),
