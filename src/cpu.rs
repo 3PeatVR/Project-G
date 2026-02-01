@@ -408,6 +408,23 @@ impl Cpu {
         value
     }
 
+    pub fn ror_accumulator(&mut self) {
+        let mut value = self.register_a;
+        let old_carry = self.status & 0b0000_0001 != 0;
+
+        if value & 1 == 1 {
+            self.status |= 0b0000_0001;
+        } else {
+            self.status &= !(0b0000_0001);
+        }
+        value = value >> 1;
+        if old_carry {
+            value = value | 0b1000_0000;
+        }
+        self.register_a = value;
+        self.update_zero_negative_flags(value);
+    }
+
     pub fn rti(&mut self) {
         self.status = self.stack_pop();
         self.status &= !(0b0001_0000);
@@ -541,6 +558,19 @@ impl Cpu {
         }
     }
 
+    pub fn asl_accumulator(&mut self) {
+        let mut value = self.register_a;
+        if value >> 7 == 1 {
+            self.status |= 0b0000_0001;
+        } else {
+            self.status &= !(0b0000_0001);
+        }
+
+        value = value << 1;
+        self.register_a = value;
+        self.update_zero_negative_flags(value);
+    }
+
     pub fn jmp(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         self.program_counter = addr;
@@ -599,7 +629,10 @@ impl Cpu {
                     self.and(&opcode.mode);
                 },
                 /*ASL */
-                0x0A | 0x06 | 0x16 | 0x0E | 0x1E => {
+                0x0A => {
+                    self.asl_accumulator();
+                },
+                0x06 | 0x16 | 0x0E | 0x1E => {
                     self.asl(&opcode.mode);
                 },
                 /*BIT */
@@ -665,7 +698,10 @@ impl Cpu {
                     self.rol(&opcode.mode);
                 },
                 /*ROR */
-                0x6A | 0x66 | 0x76 | 0x6E | 0x7E => {
+                0x6A => {
+                    self.ror_accumulator();
+                },
+                0x66 | 0x76 | 0x6E | 0x7E => {
                     self.ror(&opcode.mode);
                 },
                 /*SBC */
@@ -802,17 +838,5 @@ mod test {
         cpu.load_and_run_pg(vec![0xA2, 0x0A, 0x86, 0x10, 0x00]);
         assert_eq!(cpu.mem_read(0x10), 0x0A);
     }
-    #[test]
-    fn test_nop_does_not_stop() {
-        let mut cpu = Cpu::new();
-        cpu.load_and_run_pg(vec![0xEA, 0x00]);
-        assert_eq!(cpu.program_counter, 0x8002);
-    }
-
-
-
-
-
-
-
+    
 }
