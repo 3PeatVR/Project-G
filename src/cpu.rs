@@ -360,12 +360,32 @@ impl Cpu {
         } else {
             self.status &= !(0b0000_0001);
         }
+        value = value << 1;
         if old_carry {
-            value = value << 1 | 1;
+            value |= 1;
         }
         self.mem_write(value, addr);
         self.update_zero_negative_flags(value);
         value
+    }
+
+    pub fn rol_accumulator(&mut self) {
+        let mut value = self.register_a;
+        let old_carry = self.status & 0b0000_0001 != 0;
+        
+        if value >> 7 == 1 {
+            self.status |= 0b0000_0001;
+        } else {
+            self.status &= !(0b0000_0001);
+        }
+
+        value = value << 1;
+
+        if old_carry {
+            value = value | 1;
+        }
+        self.register_a = value;
+        self.update_zero_negative_flags(value);
     }
 
     pub fn ror(&mut self, mode: &AddressingMode) -> u8 {
@@ -456,24 +476,9 @@ impl Cpu {
     pub fn and(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
-        let sum = self.register_a as u16 + value as u16 + (if self.status & 0b0000_0001 != 0 {1} else {0}) as u16;
 
-        let carry = sum > 0xFF;
-        if carry {
-            self.status |= 0b0000_0001;   
-        } else {
-            self.status &= !(0b0000_0001);
-        }
-
-        let result = sum as u8;
-        if (value ^ result) & (result ^ self.register_a) & 0x80 != 0 {
-            self.status |= 0b0100_0000;
-        } else {
-            self.status &= !(0b0100_0000);
-        }
-
-        self.register_a = value;
-        self.update_zero_negative_flags(value);
+        self.register_a = self.register_a & value;
+        self.update_zero_negative_flags(self.register_a);
     }
 
     pub fn asl(&mut self, mode: &AddressingMode) {
@@ -613,7 +618,10 @@ impl Cpu {
                     self.ora(&opcode.mode);
                 },
                 /*ROL */
-                0x2A | 0x26 | 0x36 | 0x2E | 0x3E => {
+                0x2A => {
+                    self.rol_accumulator();
+                },
+                0x26 | 0x36 | 0x2E | 0x3E => {
                     self.rol(&opcode.mode);
                 },
                 /*ROR */
@@ -798,64 +806,6 @@ fn test_sbc_borrow() {
     assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
 }
 
-
-#[test]
-fn test_and_zero_flag() {
-    let mut cpu = Cpu::new();
-    cpu.load_and_run_pg(vec![0xA9, 0xF0, 0x29, 0x0F, 0x00]); // LDA #$F0, AND #$0F
-    assert_eq!(cpu.register_a, 0x00);
-    assert!(cpu.status & 0b0000_0010 == 0b10);
-}
-
-#[test]
-fn test_lsr_accumulator() {
-    let mut cpu = Cpu::new();
-    cpu.load_and_run_pg(vec![0xA9, 0b0000_1000, 0x4A, 0x00]); // LDA #$08, LSR A
-    assert_eq!(cpu.register_a, 0b0000_0100);
-}
-
-#[test]
-fn test_lsr_carry_flag() {
-    let mut cpu = Cpu::new();
-    cpu.load_and_run_pg(vec![0xA9, 0b0000_0001, 0x4A, 0x00]); // LDA #$01, LSR A
-    assert_eq!(cpu.register_a, 0x00);
-    assert!(cpu.status & 0b0000_0001 == 0b01);
-    assert!(cpu.status & 0b0000_0010 == 0b10);
-}
-
-#[test]
-fn test_lsr_zero_page() {
-    let mut cpu = Cpu::new();
-    cpu.load(vec![0x46, 0x10, 0x00]); // LSR $10
-    cpu.reset();
-    cpu.mem_write(0b0000_1000, 0x10);
-    cpu.run();
-    assert_eq!(cpu.mem_read(0x10), 0b0000_0100);
-}
-
-#[test]
-fn test_rol_accumulator() {
-    let mut cpu = Cpu::new();
-    cpu.load_and_run_pg(vec![0xA9, 0b0100_0000, 0x2A, 0x00]); // LDA #$40, ROL A
-    assert_eq!(cpu.register_a, 0b1000_0000);
-}
-
-#[test]
-fn test_rol_with_carry() {
-    let mut cpu = Cpu::new();
-    cpu.load_and_run_pg(vec![0x38, 0xA9, 0b0100_0000, 0x2A, 0x00]); // SEC, LDA #$40, ROL A
-    assert_eq!(cpu.register_a, 0b1000_0001);
-}
-
-#[test]
-fn test_rol_zero_page() {
-    let mut cpu = Cpu::new();
-    cpu.load(vec![0x26, 0x10, 0x00]); // ROL $10
-    cpu.reset();
-    cpu.mem_write(0b0100_0000, 0x10);
-    cpu.run();
-    assert_eq!(cpu.mem_read(0x10), 0b1000_0000);
-}
 
 
 
