@@ -28,6 +28,7 @@ pub enum AddressingMode {
 }
 
 impl Cpu {
+
     pub fn new() -> Self {
         Cpu {
             register_a: 0,
@@ -102,8 +103,8 @@ impl Cpu {
     }
 
     pub fn load(&mut self, program: Vec<u8>) {
-        self.memory[0x8000 .. (0x8000 + program.len())].copy_from_slice(&program[..]);
-        self.mem_write_le(0x8000, 0xFFFC);
+        self.memory[0x0600 .. (0x0600 + program.len())].copy_from_slice(&program[..]);
+        self.mem_write_le(0x0600, 0xFFFC);
     }
     
     pub fn load_and_run_pg(&mut self, program: Vec<u8>) {
@@ -586,7 +587,9 @@ impl Cpu {
         } else {
             self.status &= 0b1111_1101;
         }
-        self.status = (self.status & !(0b1000_0000 | 0b01000_0000)) | (data & (0b1000_0000 | 0b01000_0000));
+        self.status =
+        (self.status & !0b1100_0000) |
+        (data & 0b1100_0000);
     }
 
     pub fn update_zero_negative_flags(&mut self, result: u8) {
@@ -611,8 +614,13 @@ impl Cpu {
     }
 
     pub fn run(&mut self) {
+        self.run_with_callback(|_| {});
+    }
+
+    pub fn run_with_callback<F>(&mut self, mut callback: F) where F: FnMut(&mut Cpu) {
         let ref opcodes: HashMap<u8, &'static opcode::OpCode> = *opcode::OPCODES_MAP;
         loop {
+            callback(self);
             let code = self.mem_read(self.program_counter);
             self.program_counter += 1;
             let program_counter_state = self.program_counter;
