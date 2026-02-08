@@ -1,5 +1,7 @@
 pub mod cpu;
 pub mod opcode;
+pub mod bus;
+pub mod rom;
 use cpu::Cpu;
 use rand::Rng;
 use sdl2::event::Event;
@@ -8,10 +10,8 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 
-#[macro_use]
 extern crate lazy_static;
 
-#[macro_use]
 extern crate bitflags;
 
 fn color(byte: u8) -> Color {

@@ -1,3 +1,4 @@
+use crate::bus::Bus;
 use crate::opcode;
 use std::{collections::HashMap};
 
@@ -8,7 +9,7 @@ pub struct Cpu {
     pub status: u8,
     pub program_counter: u16,
     pub stack_pointer: u8,
-    memory: [u8; 0xFFFF],
+    pub bus: Bus,
 }
 
 #[derive(Debug)]
@@ -34,10 +35,10 @@ impl Cpu {
             register_a: 0,
             register_x: 0,
             register_y: 0,
-            status: 0,
+            status: 0, //to fix
             program_counter: 0,
             stack_pointer: 0xFD,
-            memory: [0; 0xFFFF],
+            bus: Bus::new(),
         }
     }
 
@@ -82,7 +83,7 @@ impl Cpu {
     }
 
     pub fn mem_read(&mut self, addr: u16) -> u8 {
-        self.memory[addr as usize]
+        self.bus.mem_read(addr)
     }
 
     pub fn mem_read_le(&mut self, addr: u16) -> u16 {
@@ -92,7 +93,7 @@ impl Cpu {
     }
 
     pub fn mem_write(&mut self, value: u8, addr: u16) {
-        self.memory[addr as usize] = value;
+        self.bus.mem_write(value, addr)
     }
 
     pub fn mem_write_le(&mut self, value: u16, addr: u16) {
@@ -103,8 +104,10 @@ impl Cpu {
     }
 
     pub fn load(&mut self, program: Vec<u8>) {
-        self.memory[0x0600 .. (0x0600 + program.len())].copy_from_slice(&program[..]);
-        self.mem_write_le(0x0600, 0xFFFC);
+        for i in 0..(program.len() as u16) {
+            self.mem_write(program[i as usize], 0x0000 + i, );
+        }
+        self.mem_write_le(0x0000, 0xFFFC);
     }
     
     pub fn load_and_run_pg(&mut self, program: Vec<u8>) {
