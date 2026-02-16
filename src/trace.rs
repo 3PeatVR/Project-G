@@ -121,3 +121,75 @@ pub fn trace(cpu: &mut Cpu) -> String {
     )
     .to_ascii_uppercase()
 }
+
+
+#[cfg(test)]
+mod test {
+   use super::*;
+   use crate::bus::Bus;
+   use crate::rom::Rom;
+
+   #[test]
+   fn test_format_trace() {
+       let bytes: Vec<u8> = std::fs::read("nestest.nes").unwrap();
+        let rom = Rom::new(&bytes).unwrap();
+        let mut bus = Bus::new(rom);
+       bus.mem_write(0xa2, 100);
+       bus.mem_write(0x01, 101);
+       bus.mem_write(0xca, 102);
+       bus.mem_write(0x88, 103);
+       bus.mem_write(0x00, 104);
+
+       let mut cpu = Cpu::new(bus);
+       cpu.program_counter = 0x64;
+       cpu.register_a = 1;
+       cpu.register_x = 2;
+       cpu.register_y = 3;
+       let mut result: Vec<String> = vec![];
+       cpu.run_with_callback(|cpu| {
+           result.push(trace(cpu));
+       });
+       assert_eq!(
+           "0064  A2 01     LDX #$01                        A:01 X:02 Y:03 P:24 SP:FD",
+           result[0]
+       );
+       assert_eq!(
+           "0066  CA        DEX                             A:01 X:01 Y:03 P:24 SP:FD",
+           result[1]
+       );
+       assert_eq!(
+           "0067  88        DEY                             A:01 X:00 Y:03 P:26 SP:FD",
+           result[2]
+       );
+   }
+
+    #[test]
+    fn test_format_mem_access() {
+        let bytes: Vec<u8> = std::fs::read("nestest.nes").unwrap();
+        let rom = Rom::new(&bytes).unwrap();
+        let mut bus = Bus::new(rom);
+        // ORA ($33), Y
+        bus.mem_write( 0x11, 100);
+        bus.mem_write(0x33, 101);
+
+        //data
+        bus.mem_write(00, 0x33);
+        bus.mem_write( 04, 0x34);
+
+        //target cell
+        bus.mem_write( 0xAA, 0x400);
+
+        let mut cpu = Cpu::new(bus);
+        cpu.program_counter = 0x64;
+        cpu.register_y = 0;
+        let mut result: Vec<String> = vec![];
+        cpu.run_with_callback(|cpu| {
+            result.push(trace(cpu));
+        });
+        assert_eq!(
+            "0064  11 33     ORA ($33),Y = 0400 @ 0400 = AA  A:00 X:00 Y:00 P:24 SP:FD",
+            result[0]
+        );
+    }
+}
+

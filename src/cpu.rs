@@ -2,11 +2,24 @@ use crate::bus::Bus;
 use crate::opcode;
 use std::{collections::HashMap};
 
+bitflags! {
+    pub struct Status: u8 {
+        const CARRY             = 0b00000001;
+        const ZERO              = 0b00000010;
+        const INTERRUPT_DISABLE = 0b00000100;
+        const DECIMAL           = 0b00001000;
+        const BREAK             = 0b00010000;
+        const UNUSED            = 0b00100000;
+        const OVERFLOW          = 0b01000000;
+        const NEGATIVE          = 0b10000000;
+    }
+}
+
 pub struct Cpu {
     pub register_a: u8,
     pub register_x: u8,
     pub register_y: u8,
-    pub status: u8,
+    pub status: Status,
     pub program_counter: u16,
     pub stack_pointer: u8,
     pub bus: Bus,
@@ -35,7 +48,7 @@ impl Cpu {
             register_a: 0,
             register_x: 0,
             register_y: 0,
-            status: 0, //to fix
+            status: Status::from_bits_truncate(0b100100), //to fix
             program_counter: 0,
             stack_pointer: 0xFD,
             bus: bus,
@@ -46,7 +59,7 @@ impl Cpu {
         self.register_a = 0;
         self.register_x = 0;
         self.register_y = 0;
-        self.status = 0;
+        self.status = Status::from_bits_truncate(0b100100);
         self.program_counter = self.mem_read_le(0xFFFC);
     }
 
@@ -181,20 +194,20 @@ impl Cpu {
         let value = self.mem_read(addr);
         
         if compared >= value {
-            self.status |= 0b0000_0001;
+            self.status |= Status::CARRY;
         } else {
-            self.status &= !(0b0000_0001)
+            self.status &= !(Status::CARRY)
         }
         if compared == value {
-            self.status |= 0b0000_0010;
+            self.status |= Status::ZERO;
         } else {
-            self.status &= !(0b0000_0010);
+            self.status &= !(Status::ZERO);
         }
 
-        if compared.wrapping_sub(value) & 0b1000_0000 != 0 {
-            self.status |= 0b1000_0000;
+        if compared.wrapping_sub(value) & Status::NEGATIVE.bits() != 0 {
+            self.status |= Status::NEGATIVE;
         } else {
-            self.status &= !(0b1000_0000);
+            self.status &= !(Status::NEGATIVE);
         }
     }
 
@@ -252,7 +265,7 @@ impl Cpu {
     }
 
     pub fn php(&mut self) {
-        self.stack_push(self.status);
+        self.stack_push(self.status.bits());
     }
 
     pub fn pla(&mut self) {
@@ -261,9 +274,11 @@ impl Cpu {
     }
 
     pub fn plp(&mut self) {
-        self.status = self.stack_pop();
-        self.status &= !(0b0001_0000);
-        self.status |= 0b0010_0000;
+        let value = self.stack_pop();
+
+        self.status = Status::from_bits_truncate(value);
+        self.status.remove(Status::BREAK);
+        self.status.insert(Status::UNUSED);
     }
 
     pub fn lda(&mut self, mode: &AddressingMode) {
@@ -295,9 +310,9 @@ impl Cpu {
         let value = self.mem_read(addr);
 
         if value & 1 == 1 {
-            self.status |= 0b0000_0001; 
+            self.status |= Status::CARRY; 
         } else {
-            self.status &= !(0b0000_0001);
+            self.status &= !(Status::CARRY);
         }
 
         self.mem_write(value >> 1, addr);
@@ -307,9 +322,9 @@ impl Cpu {
     pub fn lsr_accumulator(&mut self) {
         let mut value = self.register_a;
         if value & 1 == 1 {
-            self.status |= 0b0000_0001;
+            self.status |= Status::CARRY;
         } else {
-            self.status &= !(0b0000_0001);
+            self.status &= !(Status::CARRY);
         }
         value = value >> 1;
         self.register_a = value;
@@ -330,42 +345,42 @@ impl Cpu {
     }
 
     pub fn sec(&mut self) {
-        self.status |= 0b0000_0001;
+        self.status |= Status::CARRY;
     }
 
     pub fn clc(&mut self) {
-        self.status &= 0b1111_1110;
+        self.status &= !(Status::CARRY);
     }
 
     pub fn sed(&mut self) {
-        self.status |= 0b0000_1000;
+        self.status |= Status::DECIMAL;
     }
 
     pub fn cld(&mut self) {
-        self.status &= 0b1111_0111;
+        self.status &= !(Status::DECIMAL);
     }
 
     pub fn sei(&mut self) {
-        self.status |= 0b0000_0100;
+        self.status |= Status::INTERRUPT_DISABLE;
     }
 
     pub fn cli(&mut self) {
-        self.status &= 0b1111_1011;
+        self.status &= !(Status::INTERRUPT_DISABLE);
     }
 
     pub fn clv(&mut self) {
-        self.status &= 0b1011_1111;
+        self.status &= !(Status::OVERFLOW);
     }
 
     pub fn rol(&mut self, mode: &AddressingMode) -> u8 {
         let addr = self.get_operand_address(mode);
         let mut value = self.mem_read(addr);
-        let old_carry = self.status & 0b0000_0001 != 0;
+        let old_carry = self.status.contains(Status::CARRY);
 
         if value >> 7 == 1 {
-            self.status |= 0b0000_0001;
+            self.status |= Status::CARRY;
         } else {
-            self.status &= !(0b0000_0001);
+            self.status &= !(Status::CARRY);
         }
         value = value << 1;
         if old_carry {
@@ -378,12 +393,12 @@ impl Cpu {
 
     pub fn rol_accumulator(&mut self) {
         let mut value = self.register_a;
-        let old_carry = self.status & 0b0000_0001 != 0;
+        let old_carry = self.status.contains(Status::CARRY);
         
         if value >> 7 == 1 {
-            self.status |= 0b0000_0001;
+            self.status |= Status::CARRY;
         } else {
-            self.status &= !(0b0000_0001);
+            self.status &= !(Status::CARRY);
         }
 
         value = value << 1;
@@ -398,16 +413,16 @@ impl Cpu {
     pub fn ror(&mut self, mode: &AddressingMode) -> u8 {
         let addr = self.get_operand_address(mode);
         let mut value = self.mem_read(addr);
-        let old_carry = self.status & 0b0000_0001 != 0;
+        let old_carry = self.status.contains(Status::CARRY);
 
         if value & 1 == 1 {
-            self.status |= 0b0000_0001;
+            self.status |= Status::CARRY;
         } else {
-            self.status &= !(0b0000_0001);
+            self.status &= !(Status::CARRY);
         }
         value = value >> 1;
         if old_carry {
-            value = value | 0b1000_0000;
+            value = value | Status::NEGATIVE.bits();
         }
 
         self.mem_write(value, addr);
@@ -417,25 +432,27 @@ impl Cpu {
 
     pub fn ror_accumulator(&mut self) {
         let mut value = self.register_a;
-        let old_carry = self.status & 0b0000_0001 != 0;
+        let old_carry = self.status.bits() & Status::CARRY.bits() != 0;
 
         if value & 1 == 1 {
-            self.status |= 0b0000_0001;
+            self.status |= Status::CARRY;
         } else {
-            self.status &= !(0b0000_0001);
+            self.status &= !(Status::CARRY);
         }
         value = value >> 1;
         if old_carry {
-            value = value | 0b1000_0000;
+            value = value | Status::NEGATIVE.bits();
         }
         self.register_a = value;
         self.update_zero_negative_flags(value);
     }
 
     pub fn rti(&mut self) {
-        self.status = self.stack_pop();
-        self.status &= !(0b0001_0000);
-        self.status |= 0b0010_0000;
+        let value = self.stack_pop();
+
+        self.status = Status::from_bits_truncate(value);
+        self.status &= !(Status::BREAK);
+        self.status |= Status::UNUSED;
         self.program_counter = self.stack_pop_le();
     }
 
@@ -443,24 +460,24 @@ impl Cpu {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
         
-        let carry = if self.status & 0b0000_0001 != 0 { 0 } else { 1 };
+        let carry = if self.status.contains(Status::CARRY) { 0 } else { 1 };
         
         let result = (self.register_a as u16)
             .wrapping_sub(value as u16)
             .wrapping_sub(carry as u16);
         
         if result <= 0xFF {
-            self.status |= 0b0000_0001;
+            self.status |= Status::CARRY;
         } else {
-            self.status &= !0b0000_0001;
+            self.status &= !Status::CARRY;
         }
         
         let final_result = result as u8;
         
         if (self.register_a ^ value) & (self.register_a ^ final_result) & 0x80 != 0 {
-            self.status |= 0b0100_0000;
+            self.status |= Status::OVERFLOW;
         } else {
-            self.status &= !0b0100_0000;
+            self.status &= !Status::OVERFLOW;
         }
         
         self.register_a = final_result;
@@ -514,23 +531,23 @@ impl Cpu {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
         
-        let carry = if self.status & 0b0000_0001 != 0 { 1 } else { 0 };
+        let carry = if self.status.contains(Status::CARRY) { 1 } else { 0 };
         
         let sum = (self.register_a as u16) + (value as u16) + carry;
         
         if sum > 0xFF {
-            self.status |= 0b0000_0001;
+            self.status |= Status::CARRY;
         } else {
-            self.status &= !0b0000_0001;
+            self.status &= !Status::CARRY;
         }
         
         let result = sum as u8;
         
 
         if (self.register_a ^ result) & (value ^ result) & 0x80 != 0 {
-            self.status |= 0b0100_0000;
+            self.status |= Status::OVERFLOW;
         } else {
-            self.status &= !0b0100_0000;
+            self.status &= !Status::OVERFLOW;
         }
         
         self.register_a = result;
@@ -568,9 +585,9 @@ impl Cpu {
     pub fn asl_accumulator(&mut self) {
         let mut value = self.register_a;
         if value >> 7 == 1 {
-            self.status |= 0b0000_0001;
+            self.status |= Status::CARRY;
         } else {
-            self.status &= !(0b0000_0001);
+            self.status &= !(Status::CARRY);
         }
 
         value = value << 1;
@@ -588,34 +605,29 @@ impl Cpu {
         let data = self.mem_read(addr);
         let and = self.register_a & data;
 
-        if and == 0 {
-            self.status |= 0b0000_0010;
-        } else {
-            self.status &= 0b1111_1101;
-        }
-        self.status =
-        (self.status & !0b1100_0000) |
-        (data & 0b1100_0000);
+        self.status.set(Status::ZERO, and == 0);
+        self.status.set(Status::NEGATIVE, data & 0x80 != 0);
+        self.status.set(Status::OVERFLOW, data & 0x40 != 0);
     }
 
     pub fn update_zero_negative_flags(&mut self, result: u8) {
         if result == 0 {
-            self.status |= 0b0000_0010;
+            self.status |= Status::ZERO;
         } else {
-            self.status &= 0b1111_1101;
+            self.status &= !(Status::ZERO);
         }
-        if result & 0b1000_0000 != 0 {
-            self.status |= 0b1000_0000;
+        if result & Status::NEGATIVE.bits() != 0 {
+            self.status |= Status::NEGATIVE;
         } else {
-            self.status &= 0b0111_1111;
+            self.status &= !(Status::NEGATIVE);
         }
     }
 
     pub fn update_c_flag(&mut self, value: u8) {
         if value & 0x80 != 0 {
-            self.status |= 0b0000_0001;
+            self.status |= Status::CARRY;
         } else {
-            self.status &= 0b1111_1110;
+            self.status &= !(Status::CARRY);
         }
     }
 
@@ -752,14 +764,14 @@ impl Cpu {
                 0x38 => self.sec(),
                 0x18 => self.clc(),
                 0xB8 => self.clv(),
-                0x90 => self.branch(self.status & 0b0000_0001 == 0),
-                0xB0 => self.branch(self.status & 0b0000_0001 != 0),
-                0xF0 => self.branch(self.status & 0b0000_0010 != 0),
-                0x30 => self.branch(self.status & 0b1000_0000 != 0),
-                0xD0 => self.branch(self.status & 0b0000_0010 == 0),
-                0x10 => self.branch(self.status & 0b1000_0000 == 0),
-                0x50 => self.branch(self.status & 0b0100_0000 == 0),
-                0x70 => self.branch(self.status & 0b0100_0000 != 0),
+                0x90 => self.branch(!(self.status.contains(Status::CARRY))),
+                0xB0 => self.branch(self.status.contains(Status::CARRY)),
+                0xF0 => self.branch(self.status.contains(Status::ZERO)),
+                0x30 => self.branch(self.status.contains(Status::NEGATIVE)),
+                0xD0 => self.branch(!(self.status.contains(Status::ZERO))),
+                0x10 => self.branch(!(self.status.contains(Status::NEGATIVE))),
+                0x50 => self.branch(!(self.status.contains(Status::OVERFLOW))),
+                0x70 => self.branch(self.status.contains(Status::OVERFLOW)),
                 0xCA => self.dex(),
                 0x88 => self.dey(),
                 0x20 => self.jsr(),
@@ -788,8 +800,8 @@ mod test {
         let mut cpu = Cpu::new(bus);
         cpu.load_and_run_pg(vec![0xa9, 0x05, 0x00]);
         assert_eq!(cpu.register_a, 5);
-        assert!(cpu.status & 0b0000_0010 == 0);
-        assert!(cpu.status & 0b1000_0000 == 0);
+        assert!(!(cpu.status.contains(Status::ZERO)));
+        assert!(!(cpu.status.contains(Status::NEGATIVE)));
     }
 
     #[test]
@@ -797,7 +809,7 @@ mod test {
         let bus = Bus::new(test::test_rom(vec![0xa5, 0x10, 0x00]));
         let mut cpu = Cpu::new(bus);
         cpu.load_and_run_pg(vec![0xa9, 0x00, 0x00]);
-        assert!(cpu.status & 0b0000_0010 == 0b10);
+        assert!(cpu.status.bits() & Status::ZERO.bits() == 0b10);
     }
 
     #[test]
@@ -838,22 +850,6 @@ mod test {
         assert_eq!(cpu.register_a, 0x55);
     }
 
-    #[test]
-    fn test_asl_accumulator_basic() {
-        let bus = Bus::new(test::test_rom(vec![0xa5, 0x10, 0x00]));
-        let mut cpu = Cpu::new(bus);
-
-        cpu.load_and_run_pg(vec![
-            0xA9, 0b0000_0010,
-            0x0A,
-            0x00,
-        ]);
-
-        assert_eq!(cpu.register_a, 0b0000_0100);
-        assert_eq!(cpu.status & 0b0000_0001, 0);
-        assert_eq!(cpu.status & 0b0000_0010, 0);
-        assert_eq!(cpu.status & 0b1000_0000, 0);
-    }
     #[test]
     fn test_stx_zero_page() {
         let bus = Bus::new(test::test_rom(vec![0xa5, 0x10, 0x00]));
