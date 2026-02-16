@@ -35,7 +35,6 @@ pub enum AddressingMode {
     Absolute,
     AbsoluteX,
     AbsoluteY,
-    Indirect,
     IndirectX,
     IndirectY,
     NoneAdressing,
@@ -48,7 +47,7 @@ impl Cpu {
             register_a: 0,
             register_x: 0,
             register_y: 0,
-            status: Status::from_bits_truncate(0b100100), //to fix
+            status: Status::from_bits_truncate(0b100100),
             program_counter: 0,
             stack_pointer: 0xFD,
             bus: bus,
@@ -175,14 +174,6 @@ impl Cpu {
     pub fn get_operand_address(&mut self, mode: &AddressingMode) -> u16 {
         match mode {
             AddressingMode::Immediate => self.program_counter,
-            AddressingMode::Indirect => {
-                let ptr = self.mem_read_le(self.program_counter);
-                self.program_counter += 2;
-                let lo = self.mem_read(ptr);
-                let hi_addr = (ptr & 0xFF00) | ((ptr + 1) & 0x00FF);
-                let hi = self.mem_read(hi_addr);
-                (hi as u16) << 8 | (lo as u16)
-            },
             _ => {
                 self.get_absolute_address(mode, self.program_counter)
             },
@@ -563,23 +554,12 @@ impl Cpu {
     }
 
     pub fn asl(&mut self, mode: &AddressingMode) {
-        match mode {
-            AddressingMode::Accumulator => {
-                let old = self.register_a;
-                self.update_c_flag(old);
-                let result = old << 1;
-                self.register_a = result;
-                self.update_zero_negative_flags(result);
-            },
-            _ => {
-                let addr = self.get_operand_address(mode);
-                let old = self.mem_read(addr);
-                self.update_c_flag(old);
-                let result = old << 1;
-                self.mem_write(result, addr);
-                self.update_zero_negative_flags(result);
-            }
-        }
+        let addr = self.get_operand_address(mode);
+        let old = self.mem_read(addr);
+        self.update_c_flag(old);
+        let result = old << 1;
+        self.mem_write(result, addr);
+        self.update_zero_negative_flags(result);
     }
 
     pub fn asl_accumulator(&mut self) {
@@ -595,9 +575,21 @@ impl Cpu {
         self.update_zero_negative_flags(value);
     }
 
-    pub fn jmp(&mut self, mode: &AddressingMode) {
-        let addr = self.get_operand_address(mode);
+    pub fn jmp(&mut self) {
+        let addr = self.mem_read_le(self.program_counter);
         self.program_counter = addr;
+    }
+
+    pub fn jmp_indirect(&mut self) {
+        let mem_address = self.mem_read_le(self.program_counter);
+        let indirect_ref = if mem_address & 0x00FF == 0x00FF {
+            let lo = self.mem_read(mem_address);
+            let hi = self.mem_read(mem_address & 0xFFF0);
+            (hi as u16) << 8 | (lo as u16)
+        } else {
+            self.mem_read_le(mem_address)
+        };
+        self.program_counter = indirect_ref;
     }
 
     pub fn bit(&mut self, mode: &AddressingMode) {
@@ -690,9 +682,12 @@ impl Cpu {
                     self.inc(&opcode.mode);
                 },
                 /*JMP */
-                0x4C | 0x6C => {
-                    self.jmp(&opcode.mode);
+                0x4C => {
+                    self.jmp();
                 },
+                0x6C => {
+                    self.jmp_indirect();
+                }
                 /*LDA */
                 0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => {
                     self.lda(&opcode.mode);

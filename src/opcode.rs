@@ -123,7 +123,7 @@ lazy_static! {
         OpCode::new(0xFE, "INC", 3, 7, AddressingMode::AbsoluteX),
         /*JMP */
         OpCode::new(0x4C, "JMP", 3, 3, AddressingMode::Absolute),
-        OpCode::new(0x6C, "JMP", 3, 5, AddressingMode::Indirect),
+        OpCode::new(0x6C, "JMP", 3, 5, AddressingMode::NoneAdressing),
         /*LDA */
         OpCode::new(0xA9, "LDA", 2, 2, AddressingMode::Immediate),
         OpCode::new(0xA5, "LDA", 2, 3, AddressingMode::ZeroPage),
