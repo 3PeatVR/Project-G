@@ -236,6 +236,11 @@ impl Cpu {
         self.update_zero_negative_flags(result);
     }
 
+    pub fn isb(&mut self, mode: &AddressingMode) {
+        self.inc(mode);
+        self.sbc(mode);
+    }
+
     pub fn dex(&mut self) {
         self.register_x = self.register_x.wrapping_sub(1);
         self.update_zero_negative_flags(self.register_x);
@@ -502,6 +507,11 @@ impl Cpu {
         self.update_zero_negative_flags(self.register_a);
     }
 
+    pub fn slo(&mut self, mode: &AddressingMode) {
+        self.asl(mode);
+        self.ora(mode);
+    }
+
     pub fn sta(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         self.mem_write(self.register_a, addr);
@@ -712,6 +722,10 @@ impl Cpu {
                 0xE6 | 0xF6 | 0xEE | 0xFE => {
                     self.inc(&opcode.mode);
                 },
+                /*ISB (unofficial) */
+                0xe7 | 0xf7 | 0xef | 0xff | 0xfb | 0xe3 | 0xf3 => {
+                    self.isb(&opcode.mode);
+                },
                 /*JMP */
                 0x4C => {
                     self.jmp();
@@ -767,6 +781,10 @@ impl Cpu {
                 /*SBC */
                 0xE9 | 0xE5 | 0xF5 | 0xED | 0xFD | 0xF9 | 0xE1 | 0xF1 | 0xEB => {
                     self.sbc(&opcode.mode);
+                },
+                /*SLO (unofficial) */
+                0x07 | 0x17 | 0x0F | 0x1f | 0x1b | 0x03 | 0x13 => {
+                    self.slo(&opcode.mode);
                 },
                 /*STA */
                 0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => {

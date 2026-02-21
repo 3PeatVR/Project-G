@@ -276,7 +276,6 @@ lazy_static! {
         OpCode::new(0x63, "*RRA", 2, 8, AddressingMode::IndirectX),
         OpCode::new(0x73, "*RRA", 2, 8, AddressingMode::IndirectY),
 
-
         OpCode::new(0xe7, "*ISB", 2,5, AddressingMode::ZeroPage),
         OpCode::new(0xf7, "*ISB", 2,6, AddressingMode::ZeroPageX),
         OpCode::new(0xef, "*ISB", 3,6, AddressingMode::Absolute),
@@ -304,7 +303,6 @@ lazy_static! {
         OpCode::new(0x7a, "*NOP", 1,2, AddressingMode::NoneAdressing),
         OpCode::new(0xda, "*NOP", 1,2, AddressingMode::NoneAdressing),
         OpCode::new(0xfa, "*NOP", 1,2, AddressingMode::NoneAdressing),
-
 
         OpCode::new(0xa7, "*LAX", 2, 3, AddressingMode::ZeroPage),
         OpCode::new(0xb7, "*LAX", 2, 4, AddressingMode::ZeroPageY),
