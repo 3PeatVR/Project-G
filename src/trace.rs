@@ -127,13 +127,12 @@ pub fn trace(cpu: &mut Cpu) -> String {
 mod test {
    use super::*;
    use crate::bus::Bus;
-   use crate::rom::Rom;
+   use crate::rom::test::test_rom;
 
    #[test]
    fn test_format_trace() {
-       let bytes: Vec<u8> = std::fs::read("nestest.nes").unwrap();
-        let rom = Rom::new(&bytes).unwrap();
-        let mut bus = Bus::new(rom);
+       let rom = test_rom(vec![]);
+       let mut bus = Bus::new(rom, |_,_| {});
        bus.mem_write(0xa2, 100);
        bus.mem_write(0x01, 101);
        bus.mem_write(0xca, 102);
@@ -165,10 +164,8 @@ mod test {
 
     #[test]
     fn test_format_mem_access() {
-        let bytes: Vec<u8> = std::fs::read("nestest.nes").unwrap();
-        let rom = Rom::new(&bytes).unwrap();
-        let mut bus = Bus::new(rom);
-        // ORA ($33), Y
+        let rom = test_rom(vec![]);
+        let mut bus = Bus::new(rom, |_,_| {});
         bus.mem_write( 0x11, 100);
         bus.mem_write(0x33, 101);
 

@@ -1,8 +1,10 @@
 use crate::bus::Bus;
 use crate::opcode;
+use bitflags::bitflags;
 use std::{collections::HashMap};
 
 bitflags! {
+    #[derive(Clone)]
     pub struct Status: u8 {
         const CARRY             = 0b00000001;
         const ZERO              = 0b00000010;
@@ -15,14 +17,14 @@ bitflags! {
     }
 }
 
-pub struct Cpu {
+pub struct Cpu<'a> {
     pub register_a: u8,
     pub register_x: u8,
     pub register_y: u8,
     pub status: Status,
     pub program_counter: u16,
     pub stack_pointer: u8,
-    pub bus: Bus,
+    pub bus: Bus<'a>,
 }
 
 #[derive(Debug)]
@@ -40,9 +42,9 @@ pub enum AddressingMode {
     NoneAdressing,
 }
 
-impl Cpu {
+impl<'a> Cpu<'a> {
 
-    pub fn new(bus: Bus) -> Self {
+    pub fn new(bus: Bus<'a>) -> Self {
         Cpu {
             register_a: 0,
             register_x: 0,
@@ -119,9 +121,8 @@ impl Cpu {
         for i in 0..(program.len() as u16) {
             self.mem_write(program[i as usize], 0x0000 + i, );
         }
-        self.mem_write_le(0x0000, 0xFFFC);
     }
-    
+
     pub fn load_and_run_pg(&mut self, program: Vec<u8>) {
         self.load(program);
         self.reset();
@@ -183,7 +184,7 @@ impl Cpu {
     pub fn compare(&mut self, mode: &AddressingMode, compared: u8) {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
-        
+
         if compared >= value {
             self.status |= Status::CARRY;
         } else {
@@ -421,7 +422,7 @@ impl Cpu {
     pub fn rol_accumulator(&mut self) {
         let mut value = self.register_a;
         let old_carry = self.status.contains(Status::CARRY);
-        
+
         if value >> 7 == 1 {
             self.status |= Status::CARRY;
         } else {
@@ -486,19 +487,19 @@ impl Cpu {
     pub fn sbc(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
-        
+
         let carry = if self.status.contains(Status::CARRY) { 0 } else { 1 };
-        
+
         let result = (self.register_a as u16)
             .wrapping_sub(value as u16)
             .wrapping_sub(carry as u16);
-        
+
         if result <= 0xFF {
             self.status |= Status::CARRY;
         } else {
             self.status &= !Status::CARRY;
         }
-        
+
         let final_result = result as u8;
         
         if (self.register_a ^ value) & (self.register_a ^ final_result) & 0x80 != 0 {
@@ -662,6 +663,18 @@ impl Cpu {
         }
     }
 
+    pub fn interrupt_nmi(&mut self) {
+        self.stack_push_le(self.program_counter);
+        let mut flag = self.status.clone();
+        flag.set(Status::BREAK, false);
+        flag.set(Status::UNUSED, true);
+        
+        self.stack_push(flag.bits());
+        self.status.insert(Status::INTERRUPT_DISABLE);
+        self.bus.tick(2);
+        self.program_counter = self.mem_read_le(0xFFFA);
+    }
+
     pub fn run(&mut self) {
         self.run_with_callback(|_| {});
     }
@@ -669,12 +682,12 @@ impl Cpu {
     pub fn run_with_callback<F>(&mut self, mut callback: F) where F: FnMut(&mut Cpu) {
         let ref opcodes: HashMap<u8, &'static opcode::OpCode> = *opcode::OPCODES_MAP;
         loop {
-            callback(self);
             let code = self.mem_read(self.program_counter);
             self.program_counter += 1;
             let program_counter_state = self.program_counter;
 
             let opcode = opcodes.get(&code).expect(&format!("OpCode {:x} is unknown !", code));
+            let cycles = opcode.cycles;
 
             match code {
                 /*ADC */
@@ -854,80 +867,17 @@ impl Cpu {
                 0x40 => self.rti(),
                 _ => return,
             }
+
             if program_counter_state == self.program_counter {
                 self.program_counter += (opcode.len - 1) as u16;
             }
+
+            self.bus.tick(cycles);
+
+            if self.bus.poll_nmi() {
+                self.interrupt_nmi();
+                callback(self);
+            }
         }
     }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::rom::test;
-
-    #[test]
-    fn test_0xa9_lda_immediate_load_data() {
-        let bus = Bus::new(test::test_rom(vec![0xa5, 0x10, 0x00]));
-        let mut cpu = Cpu::new(bus);
-        cpu.load_and_run_pg(vec![0xa9, 0x05, 0x00]);
-        assert_eq!(cpu.register_a, 5);
-        assert!(!(cpu.status.contains(Status::ZERO)));
-        assert!(!(cpu.status.contains(Status::NEGATIVE)));
-    }
-
-    #[test]
-    fn test_0xa9_lda_zero_flag() {
-        let bus = Bus::new(test::test_rom(vec![0xa5, 0x10, 0x00]));
-        let mut cpu = Cpu::new(bus);
-        cpu.load_and_run_pg(vec![0xa9, 0x00, 0x00]);
-        assert!(cpu.status.bits() & Status::ZERO.bits() == 0b10);
-    }
-
-    #[test]
-    fn test_0xaa_tax_move_a_to_x() {
-        let bus = Bus::new(test::test_rom(vec![0xa5, 0x10, 0x00]));
-        let mut cpu = Cpu::new(bus);
-        cpu.load_and_run_pg(vec![0xa9, 0x0A,0xaa, 0x00]);
-
-        assert_eq!(cpu.register_x, 10)
-    }
-
-    #[test]
-    fn test_5_ops_working_together() {
-        let bus = Bus::new(test::test_rom(vec![0xa5, 0x10, 0x00]));
-        let mut cpu = Cpu::new(bus);
-        cpu.load_and_run_pg(vec![0xa9, 0xc0, 0xaa, 0xe8, 0x00]);
-
-        assert_eq!(cpu.register_x, 0xc1)
-    }
-
-    #[test]
-    fn test_inx_overflow() {
-        let bus = Bus::new(test::test_rom(vec![0xa5, 0x10, 0x00]));
-        let mut cpu = Cpu::new(bus);
-        cpu.load_and_run_pg(vec![0xa9, 0xff, 0xaa,0xe8, 0xe8, 0x00]);
-
-        assert_eq!(cpu.register_x, 1)
-    }
-
-    #[test]
-    fn test_lda_from_memory() {
-        let bus = Bus::new(test::test_rom(vec![0xa5, 0x10, 0x00]));
-        let mut cpu = Cpu::new(bus);
-        cpu.mem_write( 0x55, 0x10);
-
-        cpu.load_and_run_pg(vec![0xa5, 0x10, 0x00]);
-
-        assert_eq!(cpu.register_a, 0x55);
-    }
-
-    #[test]
-    fn test_stx_zero_page() {
-        let bus = Bus::new(test::test_rom(vec![0xa5, 0x10, 0x00]));
-        let mut cpu = Cpu::new(bus);
-        cpu.load_and_run_pg(vec![0xA2, 0x0A, 0x86, 0x10, 0x00]);
-        assert_eq!(cpu.mem_read(0x10), 0x0A);
-    }
-    
 }

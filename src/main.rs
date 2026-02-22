@@ -3,56 +3,117 @@ pub mod rom;
 pub mod cpu;
 pub mod opcode;
 pub mod trace;
+pub mod nestest;
+pub mod ppu;
+pub mod frame;
+pub mod render_tiles;
+pub mod render;
+pub mod joypad;
+pub mod apu;
+pub mod sound;
+
+use std::collections::HashMap;
+
+use clap::{Parser, Subcommand};
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
+use sdl2::pixels::PixelFormatEnum;
 
 use bus::Bus;
-use rom::Rom;
 use cpu::Cpu;
-use trace::trace;
+use frame::Frame;
+use ppu::Ppu;
+use rom::Rom;
 
-extern crate lazy_static;
+use crate::joypad::JoyPad;
 
-#[macro_use]
-extern crate bitflags;
+#[derive(Parser)]
+#[command(name = "project-G")]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    Test,
+    RenderTiles,
+    Play,
+}
 
 fn main() {
-    // init sdl2
-    let sdl_context = sdl2::init().unwrap();
-    let video_subsystem = sdl_context.video().unwrap();
-    let window = video_subsystem
-        .window("Snake game", (32.0 * 10.0) as u32, (32.0 * 10.0) as u32)
-        .position_centered()
-        .build()
-        .unwrap();
+    let cli = Cli::parse();
+    match cli.command {
+        Commands::Test => { nestest::nestest() },
+        Commands::RenderTiles => { render_tiles::render_tiles(); },
+        Commands::Play => {
+            let bytes = std::fs::read("./tests_rom/zelda/zelda.nes").expect("game.nes not found in current directory");
+            let rom = Rom::new(&bytes).unwrap();
 
-    let mut canvas = window.into_canvas().present_vsync().build().unwrap();
-    canvas.set_scale(10.0, 10.0).unwrap();
+            let sdl_context = sdl2::init().unwrap();
+            let video = sdl_context.video().unwrap();
+            let window = video
+                .window("NES Emulator", 256 * 3, 240 * 3)
+                .position_centered()
+                .build()
+                .unwrap();
 
-    //load the game
-    let bytes: Vec<u8> = std::fs::read("nestest.nes").unwrap();
-    let rom = Rom::new(&bytes).unwrap();
+            let mut canvas = window.into_canvas().build().unwrap();
+            let mut event_pump = sdl_context.event_pump().unwrap();
+            canvas.set_scale(3.0, 3.0).unwrap();
 
-    let bus = Bus::new(rom);
-    let mut cpu = Cpu::new(bus);
-    cpu.reset();
-    cpu.program_counter = 0xC000;
-    // let mut screen_state = [0 as u8; 32 * 3 * 32];
-    // let mut rng = rand::thread_rng();
+            let creator = canvas.texture_creator();
+            let texture = creator
+                .create_texture_target(PixelFormatEnum::RGB24, 256, 240)
+                .unwrap();
 
-    // run the game cycle
-    cpu.run_with_callback(move |cpu| {
-        println!("{}", trace(cpu));
-        // handle_user_input(cpu, &mut event_pump);
+            let mut texture: sdl2::render::Texture<'static> = unsafe { std::mem::transmute(texture) };
 
-        // cpu.mem_write(0xfe, rng.gen_range(1, 16));
+            let mut frame = Frame::new();
 
-        // if read_screen_state(cpu, &mut screen_state) {
-        //     texture.update(None, &screen_state, 32 * 3).unwrap();
+            let mut key_map = HashMap::new();
+            key_map.insert(Keycode::DOWN, joypad::InputsButtons::DOWN);
+            key_map.insert(Keycode::UP, joypad::InputsButtons::UP);
+            key_map.insert(Keycode::LEFT, joypad::InputsButtons::LEFT);
+            key_map.insert(Keycode::RIGHT, joypad::InputsButtons::RIGHT);
+            key_map.insert(Keycode::SPACE, joypad::InputsButtons::SELECT);
+            key_map.insert(Keycode::RETURN, joypad::InputsButtons::START);
+            key_map.insert(Keycode::A, joypad::InputsButtons::A);
+            key_map.insert(Keycode::S, joypad::InputsButtons::B);
 
-        //     canvas.copy(&texture, None, None).unwrap();
+            // Show the window immediately so the user can interact before the first NMI fires.
+            canvas.present();
 
-        //     canvas.present();
-        // }
+            let bus = Bus::new(rom, move |ppu: &Ppu, _joypad: &mut JoyPad| {
+                render::render(ppu, &mut frame);
+                texture.update(None, &frame.data, 256 * 3).unwrap();
+                canvas.copy(&texture, None, None).unwrap();
+                canvas.present();
+            });
 
-        // std::thread::sleep(std::time::Duration::new(0, 70_000));
-    });
+            let mut cpu = Cpu::new(bus);
+            cpu.reset();
+            cpu.run_with_callback(move |cpu| {
+                for event in event_pump.poll_iter() {
+                    match event {
+                        Event::Quit { .. }
+                        | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                            std::process::exit(0);
+                        },
+                        Event::KeyDown { keycode, .. } => {
+                            if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                                cpu.bus.joypad.set_button_pressed_status(key, true);
+                            }
+                        },
+                        Event::KeyUp { keycode, .. } => {
+                            if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                                cpu.bus.joypad.set_button_pressed_status(key, false);
+                            }
+                        },
+                        _ => {}
+                    }
+                }
+            });
+        }
+    }
 }
