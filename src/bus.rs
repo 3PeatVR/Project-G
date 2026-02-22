@@ -47,6 +47,7 @@ impl Bus {
                 let _mirror_down_addr = addr & 0b00100000_00000111;
                 // TODO implement PPU
             },
+            0x8000..=0xFFFF => panic!("Attempt to write to Cartridge ROM space: {:x}", addr),
             _ => {
                 println!("Ignoring memory writing for {}", addr);
             }
