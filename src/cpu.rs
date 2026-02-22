@@ -211,14 +211,8 @@ impl Cpu {
     }
 
     pub fn dcp(&mut self, mode: &AddressingMode) {
-        let addr = self.get_operand_address(mode);
-        let mut value = self.mem_read(addr);
-        value = value.wrapping_sub(1);
-        self.mem_write(value, addr);
-        if value <= self.register_a {
-            self.status.insert(Status::CARRY);
-        }
-        self.update_zero_negative_flags(self.register_a.wrapping_sub(value));
+        self.dec(mode);
+        self.compare(mode, self.register_a);
     }
 
     pub fn eor(&mut self, mode: &AddressingMode) {
@@ -257,7 +251,7 @@ impl Cpu {
     }
 
     pub fn iny(&mut self) {
-        self.register_y = self.register_x.wrapping_add(1);
+        self.register_y = self.register_y.wrapping_add(1);
         self.update_zero_negative_flags(self.register_y);
     }
 
@@ -395,6 +389,16 @@ impl Cpu {
         self.status &= !(Status::OVERFLOW);
     }
 
+    pub fn rla(&mut self, mode: &AddressingMode) {
+        self.rol(mode);
+        self.and(mode);
+    }
+
+    pub fn rra(&mut self, mode: &AddressingMode) {
+        self.ror(mode);
+        self.adc(mode);
+    }
+
     pub fn rol(&mut self, mode: &AddressingMode) -> u8 {
         let addr = self.get_operand_address(mode);
         let mut value = self.mem_read(addr);
@@ -507,6 +511,11 @@ impl Cpu {
         self.update_zero_negative_flags(self.register_a);
     }
 
+    pub fn sre(&mut self, mode: &AddressingMode) {
+        self.lsr(mode);
+        self.eor(mode);
+    }
+
     pub fn slo(&mut self, mode: &AddressingMode) {
         self.asl(mode);
         self.ora(mode);
@@ -548,6 +557,7 @@ impl Cpu {
 
     pub fn tsx(&mut self) {
         self.register_x = self.stack_pointer;
+        self.update_zero_negative_flags(self.register_x);
     }
 
     pub fn tya(&mut self) {
@@ -640,16 +650,8 @@ impl Cpu {
     }
 
     pub fn update_zero_negative_flags(&mut self, result: u8) {
-        if result == 0 {
-            self.status |= Status::ZERO;
-        } else {
-            self.status &= !(Status::ZERO);
-        }
-        if result & Status::NEGATIVE.bits() != 0 {
-            self.status |= Status::NEGATIVE;
-        } else {
-            self.status &= !(Status::NEGATIVE);
-        }
+        self.status.set(Status::ZERO, result == 0);
+        self.status.set(Status::NEGATIVE, result & 0x80 != 0);
     }
 
     pub fn update_c_flag(&mut self, value: u8) {
@@ -774,6 +776,14 @@ impl Cpu {
                 0x66 | 0x76 | 0x6E | 0x7E => {
                     self.ror(&opcode.mode);
                 },
+                /*RLA (unofficial) */
+                0x27 | 0x37 | 0x2F | 0x3F | 0x3b | 0x33 | 0x23 => {
+                    self.rla(&opcode.mode);
+                },
+                /*RRA (unofficial) */
+                0x67 | 0x77 | 0x6f | 0x7f | 0x7b | 0x63 | 0x73 => {
+                    self.rra(&opcode.mode)
+                },
                 /*SAX (unofficial) */
                 0x87 | 0x97 | 0x8f | 0x83 => {
                     self.sax(&opcode.mode);
@@ -785,6 +795,10 @@ impl Cpu {
                 /*SLO (unofficial) */
                 0x07 | 0x17 | 0x0F | 0x1f | 0x1b | 0x03 | 0x13 => {
                     self.slo(&opcode.mode);
+                },
+                /*SRE (unofficial) */
+                0x47 | 0x57 | 0x4F | 0x5f | 0x5b | 0x43 | 0x53 => {
+                    self.sre(&opcode.mode);
                 },
                 /*STA */
                 0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => {
