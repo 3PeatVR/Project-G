@@ -207,7 +207,6 @@ lazy_static! {
         OpCode::new(0xd3, "*DCP", 2, 8, AddressingMode::IndirectY),
         OpCode::new(0xc3, "*DCP", 2, 8, AddressingMode::IndirectX),
 
-
         OpCode::new(0x27, "*RLA", 2, 5, AddressingMode::ZeroPage),
         OpCode::new(0x37, "*RLA", 2, 6, AddressingMode::ZeroPageX),
         OpCode::new(0x2F, "*RLA", 3, 6, AddressingMode::Absolute),
@@ -239,17 +238,7 @@ lazy_static! {
         OpCode::new(0xc2, "*NOP", 2,2, AddressingMode::Immediate),
         OpCode::new(0xe2, "*NOP", 2,2, AddressingMode::Immediate),
 
-
-        OpCode::new(0xCB, "*AXS", 2,2, AddressingMode::Immediate),
-
-        OpCode::new(0x6B, "*ARR", 2,2, AddressingMode::Immediate),
-
         OpCode::new(0xeb, "*SBC", 2,2, AddressingMode::Immediate),
-
-        OpCode::new(0x0b, "*ANC", 2,2, AddressingMode::Immediate),
-        OpCode::new(0x2b, "*ANC", 2,2, AddressingMode::Immediate),
-
-        OpCode::new(0x4b, "*ALR", 2,2, AddressingMode::Immediate),
 
         OpCode::new(0x04, "*NOP", 2,3, AddressingMode::ZeroPage),
         OpCode::new(0x44, "*NOP", 2,3, AddressingMode::ZeroPage),
