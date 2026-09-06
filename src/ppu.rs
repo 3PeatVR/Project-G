@@ -21,18 +21,17 @@ pub struct Ppu {
     pub scanline: u16,
     pub cycles: usize,
     pub nmi_interrupt: Option<()>,
+
+    pub w_latch: bool,
 }
 
 pub struct AddrRegisters {
     addresses: (u8, u8),
-    hi_ptr: bool,
 }
 
 pub struct PpuScroll {
     pub scroll_x: u8,
     pub scroll_y: u8,
-
-    pub has_scroll: bool,
 }
 
 bitflags! {
@@ -112,22 +111,13 @@ impl PpuMask {
     }
 
     pub fn write_mask(&mut self, data: u8) {
-        *self = PpuMask::from_bits_truncate(data);  
+        *self = PpuMask::from_bits_truncate(data);
     }
 }
 
 impl PpuScroll {
     pub fn new() -> Self {
-        PpuScroll { scroll_x: 0, scroll_y: 0, has_scroll: false }
-    }
-
-    pub fn write_scroll(&mut self, data: u8) {
-        if !self.has_scroll {
-            self.scroll_x = data;
-        } else {
-            self.scroll_y = data;
-        }
-        self.has_scroll = !self.has_scroll;
+        PpuScroll { scroll_x: 0, scroll_y: 0 }
     }
 }
 
@@ -151,28 +141,14 @@ impl PpuStatus {
 
 impl AddrRegisters {
     pub fn new() -> Self {
-        AddrRegisters { addresses: (0, 0), hi_ptr: true }
+        AddrRegisters { addresses: (0, 0), }
     }
 
     pub fn set(&mut self, data: u16) {
         self.addresses.0 = (data >> 8) as u8;
         self.addresses.1= (data & 0xFF) as u8;
-
-        if self.get() > 0x3FFF {
-            self.set(self.get() & 0xFFFF);
-        }
-        self.hi_ptr = ! self.hi_ptr;
     }
 
-    pub fn update(&mut self, data: u8) {
-        if self.hi_ptr {
-            self.addresses.0 = data;
-        } else {
-            self.addresses.1 = data;
-        }
-
-        self.hi_ptr = !self.hi_ptr;
-    }
 
     pub fn increment(&mut self, inc: u8) {
         let lo = self.addresses.1;
@@ -181,12 +157,8 @@ impl AddrRegisters {
             self.addresses.0 = self.addresses.0.wrapping_add(1);
         }
         if self.get() > 0x3FFF {
-            self.set(self.get() & 0xFFFF);
+            self.set(self.get() & 0x3FFF);
         }
-    }
-
-    pub fn reset_ptr(&mut self) {
-        self.hi_ptr = true;
     }
 
     pub fn get(&self) -> u16 {
@@ -212,6 +184,7 @@ impl Ppu {
             cycles: 0,
             nmi_interrupt: None,
             internal_data_buff: 0,
+            w_latch: false,
         }
     }
 
@@ -229,7 +202,13 @@ impl Ppu {
     }
 
     pub fn write_addr_registers(&mut self, data: u8) {
-        self.addr.update(data);
+        if !self.w_latch {
+            self.addr.addresses.0 = data & 0x3F;
+            self.w_latch = true;
+        } else {
+            self.addr.addresses.1 = data;
+            self.w_latch = false;
+        }
     }
 
     pub fn write_to_ctrl(&mut self, data: u8) {
@@ -243,8 +222,7 @@ impl Ppu {
     pub fn read_status(&mut self) -> u8 {
         let data = self.status.bits();
         self.status.remove(PpuStatus::VBLANK_FLAG);
-        self.scroll.has_scroll = false;
-        self.addr.hi_ptr = true;
+        self.w_latch = false;
         return data;
     }
 
@@ -273,10 +251,19 @@ impl Ppu {
             },
             0x3000..=0x3EFF => panic!("Addresses in 0x3000..0x3EFF are not expected"),
             0x3F00..=0x3FFF => {
-                self.palettes[(addr - 0x3F00) as usize]
+                self.palettes[((addr - 0x3F00) % 0x20) as usize]
             },
-            _ => panic!("Unexpected address {}", addr),
+            _ => panic!("Unexpected address {:x}", addr),
         }
+    }
+
+    pub fn write_scroll(&mut self, data: u8) {
+        if !self.w_latch {
+            self.scroll.scroll_x = data;
+        } else {
+            self.scroll.scroll_y = data;
+        }
+        self.w_latch = !self.w_latch;
     }
 
     pub fn write_data(&mut self, value: u8) {
@@ -291,7 +278,10 @@ impl Ppu {
                 self.vram[mirrored as usize] = value;
             },
             0x3F00..=0x3FFF => {
-                let palette_addr = (addr - 0x3F00) % 0x20;
+                let mut palette_addr = (addr - 0x3F00) % 0x20;
+                if palette_addr == 0x10 || palette_addr == 0x14 || palette_addr == 0x18 || palette_addr == 0x1C {
+                    palette_addr -= 0x10;
+                }
                 self.palettes[palette_addr as usize] = value;
             },
             _ => {}

@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use std::{time::{Duration, Instant}};
 
 use crate::{joypad::JoyPad, ppu::Ppu, rom::Rom, apu::Apu, apu::CPU_FREQ, sound::SoundBackEnd};
 
@@ -63,10 +63,11 @@ impl<'a> Bus<'a> {
             },
             0x4015 => self.apu.read_status(),
             0x4016 => self.joypad.read(),
+            0x4017 => 0x40, // 2nd joypad not implemented yet 
             0x8000..=0xFFFF => self.read_prg_rom(addr),
             _ => {
                 //println!("Ignoring mem access at {:x}", addr);
-                0xFF
+                0x40
             }
 
         }
@@ -82,9 +83,13 @@ impl<'a> Bus<'a> {
             0x2001 => self.ppu.write_to_mask(value),
             0x2003 => self.ppu.write_oam_addr(value),
             0x2004 => self.ppu.write_oam_data(value),
-            0x2005 => self.ppu.scroll.write_scroll(value),
+            0x2005 => self.ppu.write_scroll(value),
             0x2006 => self.ppu.write_addr_registers(value),
             0x2007 => self.ppu.write_data(value),
+            0x2008..=PPU_REGISTERS_MIRRORS_END => {
+                let mirror_down_addr = addr & 0b00100000_00000111;
+                self.mem_write(value, mirror_down_addr);
+            },
             0x4000..=0x4003 => self.apu.pulse_1.write_pulse(addr, &value),
             0x4004..=0x4007 => self.apu.pulse_2.write_pulse(addr, &value),
             0x4008..=0x400B => self.apu.triangle.write_triangle(addr, &value),

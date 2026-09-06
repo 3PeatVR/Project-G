@@ -47,8 +47,12 @@ fn main() {
         Commands::Test => { nestest::nestest() },
         Commands::RenderTiles => { render_tiles::render_tiles(); },
         Commands::Play => {
-            let bytes = std::fs::read("./tests_rom/zelda/zelda.nes").expect("game.nes not found in current directory");
+            let bytes = std::fs::read("./tests_rom/zelda.nes").expect("game.nes not found in current directory");
             let rom = Rom::new(&bytes).unwrap();
+
+            if rom.mapper > 0 {
+                panic!("Mapper not supported by Project G");
+            }
 
             let sdl_context = sdl2::init().unwrap();
             let video = sdl_context.video().unwrap();
@@ -79,7 +83,7 @@ fn main() {
             key_map.insert(Keycode::SPACE, joypad::InputsButtons::SELECT);
             key_map.insert(Keycode::RETURN, joypad::InputsButtons::START);
             key_map.insert(Keycode::A, joypad::InputsButtons::A);
-            key_map.insert(Keycode::S, joypad::InputsButtons::B);
+            key_map.insert(Keycode::Z, joypad::InputsButtons::B);
 
             // Show the window immediately so the user can interact before the first NMI fires.
             canvas.present();

@@ -45,7 +45,7 @@ impl Rom {
 
         let prg_rom_start = 16 + if skip_trainer { 512 } else { 0 };
         let chr_rom_start = prg_rom_start + prg_rom_size;
-
+        println!("This is a mapper {} ROM", mapper);
 
         Ok(Rom {
             prg_rom: raw[prg_rom_start..(prg_rom_start + prg_rom_size)].to_vec(),

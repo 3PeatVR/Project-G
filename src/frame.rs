@@ -6,7 +6,6 @@ pub struct Frame {
 impl Frame {
     const WIDTH: usize = 256;
     const HEIGHT: usize = 240;
-    #[rustfmt::skip]
 
     pub fn new() -> Self {
         Frame {
@@ -30,6 +29,9 @@ impl Frame {
     }
 
     pub fn set_pixel(&mut self, x: usize, y: usize, rgb: (u8, u8, u8)) {
+        if x >= Frame::WIDTH || y >= Frame::HEIGHT {
+            return;
+        }
         let base = y * 3 * Frame::WIDTH + x * 3;
         if base + 2 < self.data.len() {
             for (i, value) in [rgb.0, rgb.1, rgb.2].iter().enumerate() {

@@ -251,12 +251,13 @@ impl Triangle {
                 self.counter_halt = *raw_value & 0b1000_000 != 0;
                 self.linear_counter_load = *raw_value & !0b1000_000;
             },
+            0x4009 => {/* unused */},
             0x400A => self.timer_period = *raw_value as u16,
             0x400B => {
                 self.length_counter_load = *raw_value  >> 3;
                 self.timer_period = (self.timer_period & 0x0FF) | ((*raw_value as u16 & 0x07) << 8);
             },
-            _ => panic!("Unknown adress for triangle"),
+            _ => panic!("Unknown adress {} for triangle", adress),
         }
     }
 

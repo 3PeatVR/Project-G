@@ -12,26 +12,6 @@ const TILES_PER_ROW: usize = 16;
 const TILE_SIZE: usize = 9;
 const FRAME_WIDTH: usize = 256;
 
-fn find_first_nes_rom(dir: &Path) -> Option<std::path::PathBuf> {
-    let Ok(entries) = fs::read_dir(dir) else {
-        return None;
-    };
-    let mut entries: Vec<_> = entries.filter_map(|e| e.ok()).collect();
-    entries.sort_by_key(|e| e.file_name());
-    for entry in entries {
-        let path = entry.path();
-        if path.is_dir() {
-            if let Some(found) = find_first_nes_rom(&path) {
-                return Some(found);
-            }
-        } else if path.extension().map(|e| e.to_ascii_lowercase() == "nes").unwrap_or(false) {
-            return Some(path);
-        }
-    }
-    None
-}
-
-
 fn show_tile(chr_rom: &Vec<u8>, bank: usize, tile_n: usize) -> Frame {
     assert!(bank <= 1);
 
@@ -62,19 +42,7 @@ fn show_tile(chr_rom: &Vec<u8>, bank: usize, tile_n: usize) -> Frame {
 
 
 pub fn render_tiles() {
-    let tests_rom_dir = Path::new("./tests_rom/mojontwinsmulticart");
-
-    let rom_path = match find_first_nes_rom(tests_rom_dir) {
-        Some(p) => p,
-        None => {
-            println!("No ROM found in ./tests_rom");
-            return;
-        }
-    };
-
-    println!("Loading ROM: {}", rom_path.display());
-
-    let raw = fs::read(&rom_path).expect("Failed to read ROM file");
+    let raw = fs::read(Path::new("./tests_rom/IceClimber.nes")).expect("Failed to read ROM file");
     let rom = Rom::new(&raw).expect("Failed to parse ROM");
 
     // Each bank half is 0x1000 (4096) bytes = 256 tiles of 16 bytes each.
@@ -94,7 +62,7 @@ pub fn render_tiles() {
 
     let window = video
         .window(
-            &format!("Tile Viewer — {}", rom_path.file_name().unwrap().to_string_lossy()),
+            &format!("Tile Viewer"),
             canvas_w * SCALE,
             canvas_h * SCALE,
         )
