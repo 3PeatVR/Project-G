@@ -47,7 +47,7 @@ fn main() {
         Commands::Test => { nestest::nestest() },
         Commands::RenderTiles => { render_tiles::render_tiles(); },
         Commands::Play => {
-            let bytes = std::fs::read("./tests_rom/zelda.nes").expect("game.nes not found in current directory");
+            let bytes = std::fs::read("./tests_rom/IceClimber.nes").expect("game.nes not found in current directory");
             let rom = Rom::new(&bytes).unwrap();
 
             if rom.mapper > 0 {

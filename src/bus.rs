@@ -127,11 +127,9 @@ impl<'a> Bus<'a> {
 
         self.cycles += cycles as usize;
 
-        let nmi_before = self.ppu.nmi_interrupt.is_some();
         (0..(cycles as usize * 3)).for_each(|_| self.ppu.tick());
-        let nmi_after = self.ppu.nmi_interrupt.is_some();
 
-        if !nmi_before && nmi_after {
+        if std::mem::take(&mut self.ppu.frame_ready) {
             let now = Instant::now();
 
             if self.next_frame > now {
