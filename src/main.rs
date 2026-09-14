@@ -11,6 +11,8 @@ pub mod render;
 pub mod joypad;
 pub mod apu;
 pub mod sound;
+pub mod config;
+pub mod rom_menu;
 
 use std::collections::HashMap;
 
@@ -25,6 +27,7 @@ use frame::Frame;
 use ppu::Ppu;
 use rom::Rom;
 
+use crate::config::Config;
 use crate::joypad::JoyPad;
 
 #[derive(Parser)]
@@ -39,6 +42,7 @@ enum Commands {
     Test,
     RenderTiles,
     Play,
+    LoadRom,
 }
 
 fn main() {
@@ -47,7 +51,9 @@ fn main() {
         Commands::Test => { nestest::nestest() },
         Commands::RenderTiles => { render_tiles::render_tiles(); },
         Commands::Play => {
-            let bytes = std::fs::read("./tests_rom/IceClimber.nes").expect("game.nes not found in current directory");
+            let config = Config::load_config();
+            let rom_path = config.loaded_rom.as_ref().expect("No rom is placed in the ./roms/ folder");
+            let bytes = std::fs::read(rom_path).expect("Rom could not be loaded");
             let rom = Rom::new(&bytes).unwrap();
 
             if rom.mapper > 0 {
@@ -76,14 +82,14 @@ fn main() {
             let mut frame = Frame::new();
 
             let mut key_map = HashMap::new();
-            key_map.insert(Keycode::DOWN, joypad::InputsButtons::DOWN);
-            key_map.insert(Keycode::UP, joypad::InputsButtons::UP);
-            key_map.insert(Keycode::LEFT, joypad::InputsButtons::LEFT);
-            key_map.insert(Keycode::RIGHT, joypad::InputsButtons::RIGHT);
-            key_map.insert(Keycode::SPACE, joypad::InputsButtons::SELECT);
-            key_map.insert(Keycode::RETURN, joypad::InputsButtons::START);
-            key_map.insert(Keycode::A, joypad::InputsButtons::A);
-            key_map.insert(Keycode::Z, joypad::InputsButtons::B);
+            key_map.insert(config.controls.down, joypad::InputsButtons::DOWN);
+            key_map.insert(config.controls.up, joypad::InputsButtons::UP);
+            key_map.insert(config.controls.left, joypad::InputsButtons::LEFT);
+            key_map.insert(config.controls.right, joypad::InputsButtons::RIGHT);
+            key_map.insert(config.controls.select, joypad::InputsButtons::SELECT);
+            key_map.insert(config.controls.start, joypad::InputsButtons::START);
+            key_map.insert(config.controls.a, joypad::InputsButtons::A);
+            key_map.insert(config.controls.b, joypad::InputsButtons::B);
 
             // Show the window immediately so the user can interact before the first NMI fires.
             canvas.present();
@@ -118,6 +124,9 @@ fn main() {
                     }
                 }
             });
+        },
+        Commands::LoadRom => {
+            let _ = rom_menu::load_rom_menu();
         }
     }
 }

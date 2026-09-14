@@ -42,7 +42,7 @@ fn show_tile(chr_rom: &Vec<u8>, bank: usize, tile_n: usize) -> Frame {
 
 
 pub fn render_tiles() {
-    let raw = fs::read(Path::new("./tests_rom/IceClimber.nes")).expect("Failed to read ROM file");
+    let raw = fs::read(Path::new("./roms/IceClimber.nes")).expect("Failed to read ROM file");
     let rom = Rom::new(&raw).expect("Failed to parse ROM");
 
     // Each bank half is 0x1000 (4096) bytes = 256 tiles of 16 bytes each.
