@@ -89,10 +89,17 @@ impl<'a> Cpu<'a> {
 
     pub fn branch(&mut self, cond: bool) {
         if cond {
-            let jump: i8 = self.mem_read(self.program_counter) as i8;
-            let jump_addr = self.program_counter.wrapping_add(1).wrapping_add(jump as u16);
+            let offset = self.mem_read(self.program_counter) as i8;
+            let base = self.program_counter.wrapping_add(1);
+            let target = base.wrapping_add(offset as i16 as u16);
 
-            self.program_counter = jump_addr;
+            self.bus.tick(1);
+
+            if base & 0xFF00 != target & 0xFF00 {
+                self.bus.tick(1);
+            }
+
+            self.program_counter = target;
         }
     }
 
@@ -671,7 +678,7 @@ impl<'a> Cpu<'a> {
         
         self.stack_push(flag.bits());
         self.status.insert(Status::INTERRUPT_DISABLE);
-        self.bus.tick(2);
+        self.bus.tick(7);
         self.program_counter = self.mem_read_le(0xFFFA);
     }
 
@@ -688,6 +695,7 @@ impl<'a> Cpu<'a> {
 
             let opcode = opcodes.get(&code).expect(&format!("OpCode {:x} is unknown !", code));
             let cycles = opcode.cycles;
+            self.bus.tick(cycles as usize);
 
             match code {
                 /*ADC */
@@ -871,8 +879,6 @@ impl<'a> Cpu<'a> {
             if program_counter_state == self.program_counter {
                 self.program_counter += (opcode.len - 1) as u16;
             }
-
-            self.bus.tick(cycles);
 
             if self.bus.poll_nmi() {
                 self.interrupt_nmi();

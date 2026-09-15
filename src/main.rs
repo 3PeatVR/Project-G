@@ -2,11 +2,8 @@ pub mod bus;
 pub mod rom;
 pub mod cpu;
 pub mod opcode;
-pub mod trace;
-pub mod nestest;
 pub mod ppu;
 pub mod frame;
-pub mod render_tiles;
 pub mod render;
 pub mod joypad;
 pub mod apu;
@@ -39,8 +36,6 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Test,
-    RenderTiles,
     Play,
     LoadRom,
 }
@@ -48,8 +43,6 @@ enum Commands {
 fn main() {
     let cli = Cli::parse();
     match cli.command {
-        Commands::Test => { nestest::nestest() },
-        Commands::RenderTiles => { render_tiles::render_tiles(); },
         Commands::Play => {
             let config = Config::load_config();
             let rom_path = config.loaded_rom.as_ref().expect("No rom is placed in the ./roms/ folder");

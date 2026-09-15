@@ -95,10 +95,14 @@ impl<'a> Bus<'a> {
             0x4008..=0x400B => self.apu.triangle.write_triangle(addr, &value),
             0x4014 => {
                 let page_start = (value as u16) << 8;
+
                 for i in 0..=255u16 {
                     let data = self.mem_read(page_start + i);
                     self.ppu.write_oam_data(data);
                 }
+
+                let dma_cycles = 513 + (self.cycles & 1);
+                self.tick(dma_cycles);
             },
             0x4015 => self.apu.write_status(value),
             0x4016 => self.joypad.write(value),
@@ -122,12 +126,12 @@ impl<'a> Bus<'a> {
         self.ppu.nmi_interrupt.take().is_some()    
     }
 
-    pub fn tick(&mut self, cycles: u8) {
+    pub fn tick(&mut self, cycles: usize) {
         let frame_time: Duration = Duration::from_secs_f64(CPU_CYCLES_PER_FRAME / CPU_FREQ);
 
-        self.cycles += cycles as usize;
+        self.cycles += cycles;
 
-        (0..(cycles as usize * 3)).for_each(|_| self.ppu.tick());
+        (0..(cycles * 3)).for_each(|_| self.ppu.tick());
 
         if std::mem::take(&mut self.ppu.frame_ready) {
             let now = Instant::now();
