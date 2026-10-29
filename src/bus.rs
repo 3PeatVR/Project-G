@@ -1,6 +1,8 @@
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::{time::{Duration, Instant}};
 
-use crate::{joypad::JoyPad, ppu::Ppu, rom::Rom, apu::Apu, apu::CPU_FREQ, sound::SoundBackEnd};
+use crate::{joypad::JoyPad, ppu::Ppu, apu::Apu, apu::CPU_FREQ, sound::SoundBackEnd, mapper::Rom};
 
 const RAM: u16 = 0x0000;
 const RAM_MIRRORS_END: u16 = 0x1FFF;
@@ -10,7 +12,7 @@ const CPU_CYCLES_PER_FRAME: f64 = 341.0 * 262.0 / 3.0;
 
 pub struct Bus<'call> {
     cpu_vram: [u8; 2048],
-    rom: Rom,
+    rom: Rc<RefCell<Rom>>,
     ppu: Ppu,
     pub joypad: JoyPad,
     pub apu: Apu,
@@ -26,14 +28,14 @@ pub struct Bus<'call> {
 
 impl<'a> Bus<'a> {
     pub fn new<'call, F>(rom: Rom, gameloop_callback: F) -> Bus<'call> where F: FnMut(&Ppu, &mut JoyPad) + 'call {
-        let chr_rom = rom.chr_rom.clone();
-        let ppu = Ppu::new(chr_rom, rom.screen_miroring);
+        let rom_clone = Rc::new(RefCell::new(rom));
+        let ppu = Ppu::new(Rc::clone(&rom_clone));
         let joypad = JoyPad::new();
         let apu = Apu::new();
         let sound = SoundBackEnd::new();
         Bus {
             cpu_vram: [0; 2048],
-            rom,
+            rom: Rc::clone(&rom_clone),
             ppu,
             cycles: 0,
             gameloop_callback: Box::from(gameloop_callback),
@@ -52,7 +54,6 @@ impl<'a> Bus<'a> {
                 self.cpu_vram[mirror_down_addr as usize]
             },
             0x2000 | 0x2001 | 0x2003 | 0x2005 | 0x4014 => {
-                //panic!("Attempt to read from write-only PPU address {:x}", addr);
                 0xFF
             },
             0x2002 => self.ppu.read_status(),
@@ -63,10 +64,15 @@ impl<'a> Bus<'a> {
             },
             0x4015 => self.apu.read_status(),
             0x4016 => self.joypad.read(),
-            0x4017 => 0x40, // 2nd joypad not implemented yet 
-            0x8000..=0xFFFF => self.read_prg_rom(addr),
+            0x4017 => 0x40, // 2nd joypad not implemented yet
+            0x6000..=0x7FFF => {
+                match self.rom.borrow().mapper.get_prg_ram(addr) {
+                    Some(value) => return value,
+                    None => return 0x40,
+                }
+            },
+            0x8000..=0xFFFF => self.rom.borrow().mapper.get_prg_rom(addr),
             _ => {
-                //println!("Ignoring mem access at {:x}", addr);
                 0x40
             }
 
@@ -107,19 +113,12 @@ impl<'a> Bus<'a> {
             0x4015 => self.apu.write_status(value),
             0x4016 => self.joypad.write(value),
             0x4017 => self.apu.write_frame_counter(value),
-            0x8000..=0xFFFF => { /*panic!("Attempt to write to Cartridge ROM space: {:x}", addr) */ }
+            0x6000..=0x7FFF => self.rom.borrow_mut().mapper.prg_ram_write(addr, value),
+            0x8000..=0xFFFF => self.rom.borrow_mut().mapper.cpu_write(addr, value),
             _ => {
                 //println!("Ignoring memory writing for {}", addr);
             }
         }
-    }
-
-    pub fn read_prg_rom(&mut self, mut addr: u16) -> u8 {
-        addr -= 0x8000;
-        if self.rom.prg_rom.len() == 0x4000 && addr >= 0x4000 {
-            addr %= 0x4000;
-        }
-        self.rom.prg_rom[addr as usize]
     }
 
     pub fn poll_nmi(&mut self) -> bool {

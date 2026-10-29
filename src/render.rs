@@ -8,8 +8,8 @@ fn pattern_pixel(
     y: usize,
 ) -> u8 {
     let bit = 7 - x;
-    let low = (ppu.chr_rom[tile_start + y] >> bit) & 1;
-    let high = (ppu.chr_rom[tile_start + y + 8] >> bit) & 1;
+    let low = (ppu.rom.borrow().mapper.get_chr_rom((tile_start + y) as u16) >> bit) & 1;
+    let high = (ppu.rom.borrow().mapper.get_chr_rom((tile_start + y + 8) as u16) >> bit) & 1;
 
     (high << 1) | low
 }

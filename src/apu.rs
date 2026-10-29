@@ -21,7 +21,7 @@ const TRIANGLE_LOOP: [f32; 32] = [
 
 pub struct Pulse {
     enabled: bool,
-    is_pulse_1: bool, // Pulse 1 uses one's-complement negate in sweep; Pulse 2 uses two's-complement.
+    is_pulse_1: bool,
 
     length_counter_halt: bool,
     length_counter: u8,

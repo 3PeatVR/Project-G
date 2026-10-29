@@ -1,5 +1,4 @@
 pub mod bus;
-pub mod rom;
 pub mod cpu;
 pub mod opcode;
 pub mod ppu;
@@ -10,6 +9,8 @@ pub mod apu;
 pub mod sound;
 pub mod config;
 pub mod rom_menu;
+pub mod mapper;
+pub mod rom_infos;
 
 use std::collections::HashMap;
 
@@ -22,7 +23,7 @@ use bus::Bus;
 use cpu::Cpu;
 use frame::Frame;
 use ppu::Ppu;
-use rom::Rom;
+use mapper::Rom;
 
 use crate::config::Config;
 use crate::joypad::JoyPad;
@@ -38,6 +39,7 @@ struct Cli {
 enum Commands {
     Play,
     LoadRom,
+    GetRomInfos,
 }
 
 fn main() {
@@ -47,11 +49,7 @@ fn main() {
             let config = Config::load_config();
             let rom_path = config.loaded_rom.as_ref().expect("No rom is placed in the ./roms/ folder");
             let bytes = std::fs::read(rom_path).expect("Rom could not be loaded");
-            let rom = Rom::new(&bytes).unwrap();
-
-            if rom.mapper > 0 {
-                panic!("Mapper not supported by Project G");
-            }
+            let rom = Rom::new(&bytes);
 
             let sdl_context = sdl2::init().unwrap();
             let video = sdl_context.video().unwrap();
@@ -84,10 +82,9 @@ fn main() {
             key_map.insert(config.controls.a, joypad::InputsButtons::A);
             key_map.insert(config.controls.b, joypad::InputsButtons::B);
 
-            // Show the window immediately so the user can interact before the first NMI fires.
             canvas.present();
 
-            let bus = Bus::new(rom, move |ppu: &Ppu, _joypad: &mut JoyPad| {
+            let bus = Bus::new(rom.expect("msg"), move |ppu: &Ppu, _joypad: &mut JoyPad| {
                 render::render(ppu, &mut frame);
                 texture.update(None, &frame.data, 256 * 3).unwrap();
                 canvas.copy(&texture, None, None).unwrap();
@@ -120,6 +117,12 @@ fn main() {
         },
         Commands::LoadRom => {
             let _ = rom_menu::load_rom_menu();
-        }
+        },
+        Commands::GetRomInfos => {
+            let config = Config::load_config();
+            let rom_path = config.loaded_rom.as_ref().expect("No rom is placed in the ./roms/ folder");
+            let bytes = std::fs::read(rom_path).expect("Rom could not be loaded");
+            rom_infos::get_rom_infos(bytes);
+        },
     }
 }

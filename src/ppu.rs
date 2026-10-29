@@ -1,10 +1,12 @@
 use core::panic;
+use std::cell::RefCell;
+use std::rc::Rc;
 
-use crate::rom::Mirroring;
+use crate::mapper::{Mirroring, Rom};
 use bitflags::bitflags;
 
 pub struct Ppu {
-    pub chr_rom: Vec<u8>,
+    pub rom: Rc<RefCell<Rom>>,
     pub vram: [u8; 4096],
     pub internal_data_buff: u8,
 
@@ -12,7 +14,6 @@ pub struct Ppu {
     pub oam: [u8; 256],
     pub oam_addr: u8,
 
-    pub mirroring: Mirroring,
     pub ctrl: PpuController,
     pub mask: PpuMask,
     pub status: PpuStatus,
@@ -28,7 +29,6 @@ pub struct Ppu {
     pub frame_pixels: Vec<u8>,
     pub frame_ready: bool,
     sprite_zero_dot: Option<usize>,
-    chr_is_ram: bool,
 }
 
 bitflags! {
@@ -131,21 +131,13 @@ impl PpuStatus {
 }
 
 impl Ppu {
-    pub fn new(chr_rom: Vec<u8>, mirroring: Mirroring) -> Self {
-        let chr_is_ram = chr_rom.is_empty();
-        let chr_rom = if chr_is_ram {
-            vec![0; 8192]
-        } else  {
-            chr_rom
-        };
+    pub fn new(rom: Rc<RefCell<Rom>>) -> Self {
         Ppu {
-            chr_rom,
-            chr_is_ram,
+            rom,
             vram: [0; 4096],
             palettes: [0; 32],
             oam: [0; 256],
             oam_addr: 0,
-            mirroring: mirroring,
             ctrl: PpuController::new(),
             mask: PpuMask::new(),
             status: PpuStatus::from_bits_truncate(0),
@@ -239,7 +231,7 @@ impl Ppu {
         let result = match addr {
             0x0000..=0x1FFF => {
                 let result = self.internal_data_buff;
-                self.internal_data_buff = self.chr_rom[addr as usize];
+                self.internal_data_buff = self.rom.borrow().mapper.get_chr_rom(addr);
                 result
             }
             0x2000..=0x3EFF => {
@@ -273,9 +265,7 @@ impl Ppu {
 
         match addr {
             0x0000..=0x1FFF => {
-                if self.chr_is_ram {
-                    self.chr_rom[addr as usize] = value;
-                }
+                self.rom.borrow_mut().mapper.ppu_write(addr, value);
             }
             0x2000..=0x3EFF => {
                 let index = self.mirror_vram_addr(addr) as usize;
@@ -295,7 +285,9 @@ impl Ppu {
         let table = index / 0x400;
         let offset = index & 0x03FF;
 
-        let physical_table = match self.mirroring {
+        let physical_table = match self.rom.borrow().mapper.get_mirroring() {
+            Mirroring::OneScreenLower => 0,
+            Mirroring::OneScreenUpper => 1,
             Mirroring::Vertical => table & 1,
             Mirroring::Horizontal => table >> 1,
             Mirroring::FourScreen => table,
