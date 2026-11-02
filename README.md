@@ -2,6 +2,12 @@
 
 NES Hobby Emulator written in Rust.
 
+![zelda](./assets/zelda.png)
+
+![smb](./assets/smb.png)
+
+![megaman2](./assets/megaman2.png)
+
 ## Summary
 
 - [Disclaimers](#disclaimers)
@@ -11,7 +17,7 @@ NES Hobby Emulator written in Rust.
 
 ## Disclaimers
 
-First of all the Nintendo Entertainment System is video game console created and developed by Nintendo. The aim of this code is only to emulate the behaviour of this console. You should own a copy of the games you play  on this emulator :).
+First of all the Nintendo Entertainment System is a video game console created and developed by Nintendo. The aim of this code is only to emulate the behaviour of this console. You should own a copy of the games you play  on this emulator :).
 
 This emulator is a hobby emulator I built during my free time as a side project. It is **NOT** a high end emulator, the main philosophy while building Project G was to be somehow in the middle between fidelity to the original hardware and fully optimizing the gaming experience. Please note that Project G is my first emulator project, the goal of it was mostly educational and to learn more about emulators & old hardware.
 
@@ -27,7 +33,7 @@ There are quite a few known issues with the emulator, here's a non-exhaustive li
 The main architecture follows the main structure from [this great guide](https://bugzmanov.github.io/nes_ebook/chapter_1.html) made by Bugzmanov.
 First we start with a *CPU* which is an emulator of the 6502 processor used in the NES. The CPU handles the gameloop and owns the *Bus* which is the spine of the system, it owns the *PPU* (Picture Processing Unit), the *APU* (Audio Processing Unit), the *Joypad*, the cycles, the rendering, the audio output. The *ROM* contains all game data, and how it is managed by the system. It is both owned by the PPU and the Bus.
 
-At the same time, we have a `config.toml` file sitting in config path, containing the path to the loaded rom and the controls mapping. Note that all your rom files must sit in a `rom` folder.
+At the same time, we have a `config.toml` file sitting in config path, containing the path to the loaded rom and the controls mapping. Note that all your rom files must sit in a `rom` folder in your current work directory.
 
 About the dependencies, the UI for loading a rom is using *Ratatui*, the audio is processed using *cpal*, the CLI is made using *clap* and the graphical rendering is made with *sdl2*. The dependencies are managed with *Cargo*.
 
@@ -39,7 +45,7 @@ Here are the commands of Project G:
 load-rom
 ```
 
-This command is for loading a `.nes` file. The files must be placed in a rom folder!
+This command is for loading a `.nes` file. The files must be placed in a rom folder in your current work directory!
 
 ```shell
 get-rom-infos
