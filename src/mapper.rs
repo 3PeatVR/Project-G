@@ -65,6 +65,22 @@ impl Mapper1 {
         }
     }
 }
+pub struct Mapper2 {
+    bank_select: u8,
+
+    chr_ram: Vec<u8>,
+    raw: Vec<u8>,
+}
+
+impl Mapper2 {
+    fn new(raw: &Vec<u8>) -> Self {
+        Mapper2 {
+            bank_select: 0,
+            chr_ram: vec![0; 8192],
+            raw: raw.to_vec(),
+        }
+    }
+}
 
 pub struct Rom {
     pub mapper: Box<dyn Mapper>
@@ -267,12 +283,60 @@ impl Mapper for Mapper1 {
 
 }
 
+impl Mapper for Mapper2 {
+    fn get_mirroring(&self) -> Mirroring {
+        let is_vertical: bool = self.raw[6] & 0x01 != 0;
+        if is_vertical { Mirroring::Vertical } else { Mirroring::Horizontal }
+    }
+    
+    fn get_prg_ram(&self, _addr: u16) -> Option<u8> {
+        return Some(0x0);
+    }
+
+    fn prg_ram_write(&mut self, _addr: u16, _value: u8) {}
+
+    fn get_prg_rom(&self, addr: u16) -> u8 {
+        let prg_rom_banks = self.raw[4] as usize;
+
+        let prg_rom_size = prg_rom_banks * PRG_ROM_PAGE_SIZE;
+        let skip_trainer = self.raw[6] & 0b100 != 0;
+        let prg_rom_start = 16 + if skip_trainer { 512 } else { 0 };
+        let bank_offset = (addr as usize) & 0x3FFF;
+        let bank = if addr < 0xC000 {
+            self.bank_select as usize
+        } else {
+            prg_rom_banks - 1
+        };
+
+        let offset = (bank % prg_rom_banks) * PRG_ROM_PAGE_SIZE + bank_offset;
+        self.raw[prg_rom_start + (offset % prg_rom_size)]
+    }
+
+    fn get_chr_rom(&self, addr: u16) -> u8 {
+        let offset = addr as usize;
+        let ram_offset = offset % self.chr_ram.len();
+        return self.chr_ram[ram_offset];
+    }
+
+    fn cpu_write(&mut self, _addr: u16, value: u8) {
+        self.bank_select = value & 0x0F;
+    }
+
+    fn ppu_write(&mut self, addr: u16, value: u8) {
+        let offset = addr as usize;
+        let ram_offset = offset % self.chr_ram.len();
+        self.chr_ram[ram_offset] = value;
+    }
+
+}
+
 impl Rom {
     pub fn new(raw: &Vec<u8>) -> Result<Self,()> {
         let number = raw[7] & 0b1111_0000 | raw[6] >> 4;
         match number {
             0 => Ok(Rom{ mapper: Box::new(Mapper0::new(raw)) }),
-            1 => Ok(Rom{ mapper: Box::new(Mapper1::new(raw))}),
+            1 => Ok(Rom{ mapper: Box::new(Mapper1::new(raw)) }),
+            2 => Ok(Rom{ mapper: Box::new(Mapper2::new(raw)) }),
             _ => Err(println!("Number not supported {}", number)),
         }
     }

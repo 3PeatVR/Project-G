@@ -25,7 +25,7 @@ There are quite a few known issues with the emulator, here's a non-exhaustive li
 
 - Metallic sound (Dmc & Noise sound modules are not implemented yet it is WIP and improvments need to be made on sound mixing)
 - No second controller support
-- Not all NES games are compatible with Project G (for now only **Mapper 0** & **most of Mapper 1** games are compatible)
+- Not all NES games are compatible with Project G (for now only **Mapper 0** & **most of Mapper 1 and 2** games are compatible)
 - ...
 
 ## Architecture
